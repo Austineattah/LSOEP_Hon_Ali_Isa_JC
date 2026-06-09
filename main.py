@@ -23,60 +23,60 @@ def image_to_base64(path):
 
 
 # ==============================================================================
-# DATA ARCHITECTURE LAYER: BILLIRI/BALANGA ADMINISTRATIVE MATRIX (EXPLICIT DECLARATION)
+# DATA ARCHITECTURE LAYER: BALANGA/BILLIRI ADMINISTRATIVE MATRIX (EXPLICIT DECLARATION)
 # ==============================================================================
 
 GEOGRAPHY = {
     "Billiri LGA": [
+        "BAGANJE NORTH",
+        "BAGANJE SOUTH",
+        "BARE",
         "BILLIRI NORTH",
         "BILLIRI SOUTH",
         "KALMAI",
-        "TODI",
-        "TURE",
-        "POPANDI",
         "TAL",
-        "TANGAN",
-        "TUDU KYLA",
-        "BANGANJE",
+        "TANGLANG",
+        "TODI",
+        "TUDU KWAYA",
     ],
     "Balanga LGA": [
-        "BALANGA",
-        "DADIYA",
-        "DALA-WAJA",
-        "SWA",
-        "TALASSE",
-        "DONG",
-        "GELENGU",
         "BAMBAM",
-        "BWOM",
-        "NYUWAR",
+        "BANGU",
+        "DADIYA",
+        "GELENGU / BALANGA",
+        "KINDIYO",
+        "KULANI / DEGRE / SIKKAM",
+        "MWONA",
+        "NYUWAR / JESSU",
+        "SWA / REF / W. WAJA",
+        "TALASSE / DONG / REME",
     ],
 }
 
 LGA_WARD_DATA = {
     "BILLIRI": [
+        "BAGANJE NORTH",
+        "BAGANJE SOUTH",
+        "BARE",
         "BILLIRI NORTH",
         "BILLIRI SOUTH",
         "KALMAI",
-        "TODI",
-        "TURE",
-        "POPANDI",
         "TAL",
-        "TANGAN",
-        "TUDU KYLA",
-        "BANGANJE",
+        "TANGLANG",
+        "TODI",
+        "TUDU KWAYA",
     ],
     "BALANGA": [
-        "BALANGA",
-        "DADIYA",
-        "DALA-WAJA",
-        "SWA",
-        "TALASSE",
-        "DONG",
-        "GELENGU",
         "BAMBAM",
-        "BWOM",
-        "NYUWAR",
+        "BANGU",
+        "DADIYA",
+        "GELENGU / BALANGA",
+        "KINDIYO",
+        "KULANI / DEGRE / SIKKAM",
+        "MWONA",
+        "NYUWAR / JESSU",
+        "SWA / REF / W. WAJA",
+        "TALASSE / DONG / REME",
     ],
 }
 
@@ -183,28 +183,28 @@ STATE_DATA_LEDGER = {
     },
     "Gombe State": {
         "BILLIRI": [
+            "BAGANJE NORTH",
+            "BAGANJE SOUTH",
+            "BARE",
             "BILLIRI NORTH",
             "BILLIRI SOUTH",
             "KALMAI",
-            "TODI",
-            "TURE",
-            "POPANDI",
             "TAL",
-            "TANGAN",
-            "TUDU KYLA",
-            "BANGANJE",
+            "TANGLANG",
+            "TODI",
+            "TUDU KWAYA",
         ],
         "BALANGA": [
-            "BALANGA",
-            "DADIYA",
-            "DALA-WAJA",
-            "SWA",
-            "TALASSE",
-            "DONG",
-            "GELENGU",
             "BAMBAM",
-            "BWOM",
-            "NYUWAR",
+            "BANGU",
+            "DADIYA",
+            "GELENGU / BALANGA",
+            "KINDIYO",
+            "KULANI / DEGRE / SIKKAM",
+            "MWONA",
+            "NYUWAR / JESSU",
+            "SWA / REF / W. WAJA",
+            "TALASSE / DONG / REME",
         ],
         "GOMBE": ["Gombe East", "Gombe West", "Jekadafari", "Pantami"],
         "AKKO": ["Akko Town", "Kumo Central", "Pindiga"],
@@ -386,7 +386,7 @@ STATE_DATA_LEDGER = {
     },
 }
 
-PROJECT_PARTITION_ID = "BILLIRI_BALANGA_GOMBE"
+PROJECT_PARTITION_ID = "BALANGA/BILLIRI_GOMBE"
 COLUMNS_STRUCTURE = [
     "NIN",
     "VIN",
@@ -765,7 +765,7 @@ st.markdown(
     
     .stTextInput label p { color: #00E5FF !important; font-weight: 700 !important; }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
@@ -877,7 +877,7 @@ def render_marquee_header():
             </div>
             <div class="vault-text-block">
                 <h1>HONOURABLE ALI ISA JC PhD</h1>
-                <div class="sub-title">MINORITY WHIP<br>BILLIRI/BALANGA FEDERAL CONSTITUENCY</div>
+                <div class="sub-title">MINORITY WHIP<br>BALANGA/BILLIRI FEDERAL CONSTITUENCY</div>
                 <div class="geo-stamp">GOMBE STATE</div>
             </div>
             <div class="photo-vault-shield">
