@@ -616,6 +616,12 @@ st.markdown(
         100% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
     }
 
+    @keyframes prestige-flash {
+        0% { opacity: 0; }
+        50% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+
     @keyframes radar_flash {
         0% { background-color: #FF0000; color: #FFFFFF; box-shadow: 0 0 20px #FF0000; }
         50% { background-color: #330000; color: #FF0000; box-shadow: 0 0 0px #000000; }
@@ -662,6 +668,7 @@ st.markdown(
         width: 90% !important; 
         object-fit: contain !important; 
         filter: drop-shadow(0px 0px 20px rgba(255, 215, 0, 0.85)) contrast(1.4) brightness(1.1);
+        animation: prestige-flash 3s linear infinite;
     }
 
     .photo-vault-shield {
@@ -877,7 +884,7 @@ def render_marquee_header():
             </div>
             <div class="vault-text-block">
                 <h1>HONOURABLE ALI ISA JC PhD</h1>
-                <div class="sub-title">MINORITY WHIP<br>BALANGA/BILLIRI FEDERAL CONSTITUENCY</div>
+                <div class="sub-title">MINORITY WHIP<br>BILLIRI/BALANGA FEDERAL CONSTITUENCY</div>
                 <div class="geo-stamp">GOMBE STATE</div>
             </div>
             <div class="photo-vault-shield">
