@@ -1,6 +1,6 @@
 # ==============================================================================
 # PROJECT: LSOEP TITAN GOMBE - CORE ENGINE INTERFACE
-# REVISION: v34.0.73 [ERROR CORRECTION]
+# REVISION: v35.0.0 [HAUSA LANG, COLLATION OFFICER, BVAS UPDATE]
 # ==============================================================================
 
 import streamlit as st
@@ -10,6 +10,151 @@ import os
 import json
 import time
 import base64
+
+# Initialize language in session state
+if "lang" not in st.session_state:
+    st.session_state.lang = "English"
+
+
+# Language toggle component
+def render_language_toggle():
+    col1, col2, col3 = st.columns([6, 1, 1])
+    with col3:
+        if st.button("Hausa / English"):
+            st.session_state.lang = (
+                "Hausa" if st.session_state.lang == "English" else "English"
+            )
+            st.rerun()
+
+
+# ==============================================================================
+# GLOBAL LANGUAGE DICTIONARY
+# ==============================================================================
+text_content = {
+    "English": {
+        "title": "Constituency Outreach Portal",
+        "name": "Full Name",
+        "submit": "Submit",
+        "command_hub_key": "COMMAND HUB KEY",
+        "official_facebook": "Hon. Ali Isa JC Official Facebook",
+        "skill_vocation_pool": "SKILL VOCATION POOL",
+        "student_scholarship": "STUDENT SCHOLARSHIP/GRANT",
+        "palliative_enrollment": "CONSTITUENT PALLIATIVE ENROLLMENT",
+        "cv_vault": "CV & ARTISAN VAULT",
+        "community_urgent_need": "COMMUNITY URGENT NEED",
+        "trigger_registration": "TRIGGER REGISTRATION INTERFACE",
+        "field_auth_core": "Field Authentication Core",
+        "collation_officer_key": "COLLATION OFFICER KEY",
+        "polling_unit_agent_key": "POLLING UNIT AGENT KEY",
+        "collation_officer_remarks": "Collation Officer Remarks/Field Observations",
+        "agent_remarks": "Agent Remarks/Field Observations",
+        "header_title": "HONOURABLE ALI ISA JC PhD",
+        "header_subtitle": "MINORITY WHIP<br>BILLIRI/BALANGA FEDERAL CONSTITUENCY",
+        "header_geo_stamp": "GOMBE STATE",
+        "marquee_text": "HONOURABLE ALI ISA JC CARES..... SAME VISION BUT DIFFERENT PLATFORM TO SERVE THE GOOD PEOPLE OF BILLIRI/BALANGA WITH INTEGRITY, TRANSPARENCY, ACCOUNTABILITY DRIVEN BY PEOPLE ORIENTED PROGRAMS.",
+        "collation_officer_command_title": "COLLATION OFFICER COMMAND: FORM EC8A LOGS",
+        "collation_officer_full_name": "Collation Officer Full Name",
+        "phone_number": "Phone Number",
+        "state_link_node": "State Link Node",
+        "your_lga": "Your LGA",
+        "your_ward": "Your Ward",
+        "ward_unit_tracking_code": "Ward Unit Tracking Code/Number",
+        "active_scope_assessment": "Active Scope Assessment Matrix",
+        "highest_party_vote": "Highest Party Vote Recorded",
+        "principal_votes_cast": "Principal Votes Cast Density",
+        "upload_nin_slip": "Upload Collation Officer Physical NIN Slip Link Asset",
+        "live_capture_ec8a": "Live Capture Sensor Matrix: Form EC8A Sheet",
+        "generate_preview_slip": "GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP",
+        "confirm_and_log": "CONFIRM METRICS: LOG INTO PRODUCTION ARRAYS",
+        "abort_transaction": "ABORT TRANSACTION: CLEAR PREVIEW NODE STUB",
+        "agent_panel_title": "POLLING UNIT AGENT: FIELD DATA TRANSFERS",
+        "agent_full_name": "Agent Full Operator Name",
+        "agent_phone": "Agent Communication Contact Phone",
+        "polling_unit_id_code": "Polling Unit (PU) Identity Name Code",
+        "bvas_serial_number": "Enter BVAS Serial Number",
+        "accredited_voters_count": "Number of Accredited Voters",
+        "bvas_failure_checkbox": "BVAS System Failure / Absent?",
+        "bvas_incident_report": "Provide Incident Report (Reason for BVAS Absence)",
+        "internal_remarks": "Internal Remarks (For Agent Review Only)",
+        "review_and_submit": "Review & Submit Data",
+        "applicant_contact_number": "Applicant Contact Number",
+        "your_nin": "Your NIN number",
+        "your_voters_card": "Your Voters card number",
+        "dob": "Date of Birth",
+        "gender": "Gender Matrix",
+        "disability_status": "Vulnerability/Disability Status",
+        "upload_profile_nin": "Upload Profile NIN Slip Document Click",
+        "vocational_domain": "Vocational Domain Target Pool Sector",
+        "other_vocation": "Other (Type Custom Vocation Below)",
+        "custom_vocation_prompt": "Type Your Choice Vocation Natively Here",
+        "prior_palliative_check": "Have you received a palliative from this office before?",
+        "candidate_statement": "Candidate Skill Interest Statement Details",
+        "biometric_scan": "Biometric Security Verification Core Scan",
+    },
+    "Hausa": {
+        "title": "Dandalin Sadarwa na Mazabu",
+        "name": "Cikakken Suna",
+        "submit": "Aika",
+        "command_hub_key": "MABUDIN HUKUMAR Gudanarwa",
+        "official_facebook": "Shafin Facebook na Gwamna Hon. Ali Isa JC",
+        "skill_vocation_pool": "TARIN KWAREWAR SANA'A",
+        "student_scholarship": "GURABUN KARATU/TALLAFIN DALIBAI",
+        "palliative_enrollment": "RAJISTAR TALAKAWA DON TALLAFI",
+        "cv_vault": "MA'AJIYAR CV & MASANA",
+        "community_urgent_need": "BUKATUN AL'UMMA NA GAGGAWA",
+        "trigger_registration": "KADDAMAR DA INTERFACE NA RAJISTA",
+        "field_auth_core": "Tabbatar da Gaskiyar Bayanai a Fili",
+        "collation_officer_key": "MABUDIN JAMI'IN TARAYAWA",
+        "polling_unit_agent_key": "MABUDIN WAKILIN RUMBUN ZABE",
+        "collation_officer_remarks": "Bayanai/Abubuwan da Jami'in Tarayawa ya lura dasu",
+        "agent_remarks": "Bayanai/Abubuwan da Wakili ya lura dasu",
+        "header_title": "HONOURABLE ALI ISA JC PhD",
+        "header_subtitle": "SHUGABAN MARASA RINJAYE<br>MAZABAR TARAYYA TA BILLIRI/BALANGA",
+        "header_geo_stamp": "JIHAR GOMBE",
+        "marquee_text": "HONOURABLE ALI ISA JC KULA..... IRIN WANNAN HANGEN NESAN AMMA DANDAMALI DABAN DOMIN YI WA JAMA'AR BILLIRI/BALANGA HIDIMA DA AMINCI, GASKIYA, DA KUMA TABBATAR DA SHIRYE-SHIRYEN DA SUKA DACE DA JAMA'A.",
+        "collation_officer_command_title": "UMURNIN JAMI'IN TARAYAWA: BAYANAN FORM EC8A",
+        "collation_officer_full_name": "Cikakken Sunan Jami'in Tarayawa",
+        "phone_number": "Lambar Waya",
+        "state_link_node": "Jiha",
+        "your_lga": "Karamar Hukumar ku",
+        "your_ward": "Mazabar ku",
+        "ward_unit_tracking_code": "Lambar Bibiyar Rukunin Mazaba",
+        "active_scope_assessment": "Matrix Gwajin Iyakokin Aiki",
+        "highest_party_vote": "Mafi Girman Adadin Kuri'un Jam'iyya",
+        "principal_votes_cast": "Adadin Jimillar Kuri'un da aka Kada",
+        "upload_nin_slip": "Sanya Hoton Katin NIN na Jami'in Tarayawa",
+        "live_capture_ec8a": "Na'urar Daukar Hoton Takardar Form EC8A kai tsaye",
+        "generate_preview_slip": "HAIFAR DA TAKARDAR DUBA BAYANAI",
+        "confirm_and_log": "TABBATAR DA BAYANAI: SHIGA CIKIN MA'AJIYAR BAYANAI",
+        "abort_transaction": "SOKE AIKI: SHARE BAYANAN DUBAWA",
+        "agent_panel_title": "WAKILIN RUMBUN ZABE: AIKO BAYANAI DAGA FILI",
+        "agent_full_name": "Cikakken Sunan Wakilin Aiki",
+        "agent_phone": "Lambar Wayar Sadarwa ta Wakili",
+        "polling_unit_id_code": "Sunan Kasa na Rumbun Zabe (PU)",
+        "bvas_serial_number": "Shigar da Lambar Serial ta BVAS",
+        "accredited_voters_count": "Adadin Masu Kada Kuri'a da aka Tabbatar",
+        "bvas_failure_checkbox": "Na'urar BVAS ta Samu Matsala / Ba a kawo ba?",
+        "bvas_incident_report": "Bayar da Rahoton Lamarin (Dalilin rashin BVAS)",
+        "internal_remarks": "Bayanai na Cikin Gida (Don Dubawar Wakili Kadai)",
+        "review_and_submit": "Duba & Aika Bayanai",
+        "applicant_contact_number": "Lambar Waya ta Mai nema",
+        "your_nin": "Lambarka ta NIN",
+        "your_voters_card": "Lambarka ta katin zabe",
+        "dob": "Ranar Haihuwa",
+        "gender": "Jinsi",
+        "disability_status": "Yanayin Rauni/Nakasa",
+        "upload_profile_nin": "Danna don Sanya Takardar NIN",
+        "vocational_domain": "Sashin Koyon Sana'a",
+        "other_vocation": "Wata (Rubuta wata sana'ar a kasa)",
+        "custom_vocation_prompt": "Rubuta Sana'ar da kake so a nan",
+        "prior_palliative_check": "Ka taba samun tallafi daga wannan ofis a baya?",
+        "candidate_statement": "Bayanin Sha'awar Kwarewar dan takara",
+        "biometric_scan": "Binciken Tsaro na Biometric",
+    },
+}
+
+# Use these variables in your UI
+current = text_content[st.session_state.lang]
 
 
 # ==============================================================================
@@ -530,8 +675,8 @@ def initialize_and_recover_system_states():
                 "BALANGA_DADIYA": "2026-05-15 09:45:10",
             }
             st.session_state.submitted_pus = {
-                "BILLIRI_TURE_PU001": '{"Presidential": 120, "Senatorial": 245, "Governorship": 190, "State_House": 210, "Timestamp": "2026-05-15 08:10:00", "Agent": "Ojong Ogar", "EC8A_Status": "Verified_PNG"}',
-                "BALANGA_DADIYA_PU003": '{"Presidential": 95, "Senatorial": 310, "Governorship": 220, "State_House": 185, "Timestamp": "2026-05-15 09:30:15", "Agent": "Eno Takim", "EC8A_Status": "Verified_JPG"}',
+                "BILLIRI_TURE_PU001": """{"Presidential": 120, "Senatorial": 245, "Governorship": 190, "State_House": 210, "Timestamp": "2026-05-15 08:10:00", "Agent": "Ojong Ogar", "EC8A_Status": "Verified_PNG"}""",
+                "BALANGA_DADIYA_PU003": """{"Presidential": 95, "Senatorial": 310, "Governorship": 220, "State_House": 185, "Timestamp": "2026-05-15 09:30:15", "Agent": "Eno Takim", "EC8A_Status": "Verified_JPG"}""",
             }
 
     if "current_page" not in st.session_state:
@@ -570,12 +715,31 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+render_language_toggle()
+
 try:
     from modules import branding
 
     HAS_MODULES = True
 except ImportError:
     HAS_MODULES = False
+
+st.markdown(
+    """
+    <style>
+    .printable-slip-box { 
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
+        padding: 25px; 
+        border: 3px double #8B0000; 
+        border-radius: 4px; 
+        font-family: 'Courier New', Courier, monospace; 
+        margin-top: 15px; 
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -614,12 +778,6 @@ st.markdown(
         0% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
         50% { border-color: #00E5FF; box-shadow: 0 0 45px rgba(0, 229, 255, 0.9); background-position: 100% 50%; }
         100% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
-    }
-
-    @keyframes prestige-flash {
-        0% { opacity: 0; }
-        50% { opacity: 1; }
-        100% { opacity: 0; }
     }
 
     @keyframes radar_flash {
@@ -668,7 +826,6 @@ st.markdown(
         width: 90% !important; 
         object-fit: contain !important; 
         filter: drop-shadow(0px 0px 20px rgba(255, 215, 0, 0.85)) contrast(1.4) brightness(1.1);
-        animation: prestige-flash 3s linear infinite;
     }
 
     .photo-vault-shield {
@@ -766,16 +923,17 @@ st.markdown(
     .tier-box.tier-gov { background-color: #9467BD !important; }
     .tier-box.tier-house { background-color: #FF7F0E !important; }
     
-    .printable-slip-box { background-color: #FFFFFF !important; color: #000000 !important; padding: 25px; border: 3px double #8B0000; border-radius: 4px; font-family: 'Courier New', Courier, monospace; margin-top: 15px; }
     .slip-header { text-align: center; font-weight: 900; font-size: 16px; margin-bottom: 15px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
     .slip-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: bold; }
     
     .stTextInput label p { color: #00E5FF !important; font-weight: 700 !important; }
     </style>
-    """,
+""",
     unsafe_allow_html=True,
 )
 
+
+st.title(current["title"])
 # ==============================================================================
 # UNIFIED STRATEGIC AUTHORIZATION INTERFACE ROUTER MATRIX
 # ==============================================================================
@@ -784,8 +942,8 @@ if "current_page" not in st.session_state:
 
 if st.session_state.get("adm_v30_auth") == "ali 2027":
     st.session_state.current_page = "main_dashboard"
-elif st.session_state.get("sup_v30_auth_sidebar") == "ali 2027":
-    st.session_state.current_page = "supervisor_panel"
+elif st.session_state.get("co_v30_auth_sidebar") == "ali 2027":
+    st.session_state.current_page = "collation_officer_panel"
 elif st.session_state.get("agt_v30_auth_sidebar") == "ali 2027":
     st.session_state.current_page = "agent_panel"
 
@@ -795,64 +953,66 @@ elif st.session_state.get("agt_v30_auth_sidebar") == "ali 2027":
 with st.sidebar:
     if st.session_state.radar_threat:
         st.markdown(
-            f'<div class="radar-sticky-threat">🚨 SECURITY WARNING: IDENTITY DUPLICATION COLLISION<br>{st.session_state.threat_msg}</div>',
+            f"""<div class="radar-sticky-threat">🚨 SECURITY WARNING: IDENTITY DUPLICATION COLLISION<br>{st.session_state.threat_msg}</div>""",
             unsafe_allow_html=True,
         )
 
-    st.markdown('<div class="admin-launch-zone">', unsafe_allow_html=True)
-    adm_key = st.text_input("COMMAND HUB KEY", type="password", key="adm_v30_auth")
+    st.markdown("""<div class="admin-launch-zone">""", unsafe_allow_html=True)
+    adm_key = st.text_input(
+        current["command_hub_key"], type="password", key="adm_v30_auth"
+    )
     st.markdown(
-        '<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" class="inst-link-box">🌐 Hon. Ali Isa JC Official Facebook</a>',
+        f"""<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" class="inst-link-box">🌐 {current["official_facebook"]}</a>""",
         unsafe_allow_html=True,
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.divider()
 
-    if st.button("🛠️ SKILL VOCATION POOL", key="btn_skill"):
+    if st.button(current["skill_vocation_pool"], key="btn_skill"):
         st.session_state.current_page = "skill_form"
-    if st.button("🎓 STUDENT SCHOLARSHIP/GRANT", key="btn_sch"):
+    if st.button(current["student_scholarship"], key="btn_sch"):
         st.session_state.current_page = "scholarship_form"
-    if st.button("📦 CONSTITUENT PALLIATIVE ENROLLMENT", key="btn_pal"):
+    if st.button(current["palliative_enrollment"], key="btn_pal"):
         st.session_state.current_page = "palliative_gateway"
-    if st.button("🚀 CV & ARTISAN VAULT", key="btn_cv"):
+    if st.button(current["cv_vault"], key="btn_cv"):
         st.session_state.current_page = "cv_vault"
 
     st.markdown(
-        '<div class="sidebar-red-flash">🚨 COMMUNITY URGENT NEED</div>',
+        f"""<div class="sidebar-red-flash">🚨 {current["community_urgent_need"]}</div>""",
         unsafe_allow_html=True,
     )
-    if st.button("TRIGGER REGISTRATION INTERFACE", key="btn_cun_redirect"):
+    if st.button(current["trigger_registration"], key="btn_cun_redirect"):
         st.session_state.current_page = "cun_trigger"
 
     st.divider()
     st.divider()
     st.markdown(
-        "<p style='color:#8B0000; font-weight:bold; text-transform: uppercase;'>🔒 Field Authentication Core</p>",
+        f"<p style='color:#8B0000; font-weight:bold; text-transform: uppercase;'>🔒 {current['field_auth_core']}</p>",
         unsafe_allow_html=True,
     )
 
-    sup_key_input = st.text_input(
-        "WARD SUPERVISOR KEY", type="password", key="sup_v30_auth_sidebar"
+    co_key_input = st.text_input(
+        current["collation_officer_key"], type="password", key="co_v30_auth_sidebar"
     )
     agt_key_input = st.text_input(
-        "POLLING UNIT AGENT KEY", type="password", key="agt_v30_auth_sidebar"
+        current["polling_unit_agent_key"], type="password", key="agt_v30_auth_sidebar"
     )
 
-    if sup_key_input:
+    if co_key_input:
         st.text_area(
-            "Supervisor Remarks/Field Observations",
-            key="sup_remarks",
+            current["collation_officer_remarks"],
+            key="co_remarks",
             placeholder="Field log entry space...",
         )
     if agt_key_input:
         st.text_area(
-            "Agent Remarks/Field Observations",
+            current["agent_remarks"],
             key="agt_remarks",
             placeholder="Unit log entry space...",
         )
 
-    st.caption(f"Engine: v34.0.73-BILLIRI-BALANGA | {datetime.date.today()}")
+    st.caption(f"Engine: v35.0.0-BILLIRI-BALANGA | {datetime.date.today()}")
 
 
 # ==============================================================================
@@ -866,12 +1026,12 @@ def render_marquee_header():
     portrait_base64 = image_to_base64(portrait_path)
 
     mace_html = (
-        f'<img src="data:image/png;base64,{mace_base64}">'
+        f"""<img src="data:image/png;base64,{mace_base64}">"""
         if mace_base64
         else "<p>Mace image not found</p>"
     )
     portrait_html = (
-        f'<img src="data:image/png;base64,{portrait_base64}">'
+        f"""<img src="data:image/png;base64,{portrait_base64}">"""
         if portrait_base64
         else "<p>Portrait not found. Please upload 'hon_ali.png' to the 'assets' folder.</p>"
     )
@@ -883,9 +1043,9 @@ def render_marquee_header():
                 {mace_html}
             </div>
             <div class="vault-text-block">
-                <h1>HONOURABLE ALI ISA JC PhD</h1>
-                <div class="sub-title">MINORITY WHIP<br>BILLIRI/BALANGA FEDERAL CONSTITUENCY</div>
-                <div class="geo-stamp">GOMBE STATE</div>
+                <h1>{current["header_title"]}</h1>
+                <div class="sub-title">{current["header_subtitle"]}</div>
+                <div class="geo-stamp">{current["header_geo_stamp"]}</div>
             </div>
             <div class="photo-vault-shield">
                 {portrait_html}
@@ -896,9 +1056,9 @@ def render_marquee_header():
     )
 
     st.markdown(
-        '<div style="margin-top:15px; background:linear-gradient(180deg, #061a33 0%, #020b17 100%); padding:8px; border-radius:8px;">'
-        '  <marquee scrollamount="4" style="color:#FFFFFF; font-weight:800; font-size:16px; letter-spacing:1.5px; font-family:sans-serif;">'
-        "    HONOURABLE ALI ISA JC CARES..... SAME VISION BUT DIFFERENT PLATFORM TO SERVE THE GOOD PEOPLE OF BILLIRI/BALANGA WITH INTEGRITY, TRANSPARENCY, ACCOUNTABILITY DRIVEN BY PEOPLE ORIENTED PROGRAMS."
+        f"""<div style="margin-top:15px; background:linear-gradient(180deg, #061a33 0%, #020b17 100%); padding:8px; border-radius:8px;">"""
+        f"""  <marquee scrollamount="4" style="color:#FFFFFF; font-weight:800; font-size:16px; letter-spacing:1.5px; font-family:sans-serif;">"""
+        f"""    {current["marquee_text"]}"""
         "  </marquee>"
         "</div>",
         unsafe_allow_html=True,
@@ -937,34 +1097,74 @@ def render_institutional_purge_engine(key_suffix):
             st.sidebar.rerun()
 
 
+def render_electoral_data_capture(portal_type="AGENT"):
+    st.subheader("POLLING UNIT AGENT FIELD DATA")
+
+    # 1. Tiers Audited Vector Checkbox Mapping
+    st.markdown("### Tiers Audited Vector")
+    tiers = [
+        "Federal House",
+        "Senatorial",
+        "Presidential",
+        "Governorship",
+        "State House",
+    ]
+    selected_tiers = [
+        tier for tier in tiers if st.checkbox(tier, key=f"{portal_type}_{tier}")
+    ]
+
+    # 2. Top 4 Party Vote Recording
+    st.markdown("### Top 4 Party Votes")
+    cols = st.columns(4)
+    party_votes = {}
+    for i in range(4):
+        with cols[i]:
+            party_name = st.text_input(f"Party {i+1}", key=f"{portal_type}_p{i}")
+            party_votes[party_name] = st.number_input(
+                f"Votes", min_value=0, key=f"{portal_type}_v{i}"
+            )
+
+    # 3. Principal Votes Cast Density
+    st.markdown("### Principal Votes Cast Density")
+    density = st.slider(
+        "Select Vote Density Index (0-100%)",
+        0,
+        100,
+        50,
+        help="Ratio of total votes cast vs. total registered voters.",
+    )
+
+    return {"tiers": selected_tiers, "party_votes": party_votes, "density": density}
+
+
 # ==============================================================================
 # MASTER APPLICATION CORE ROUTING LAYER
 # ==============================================================================
 
-if st.session_state.current_page == "supervisor_panel":
+if st.session_state.current_page == "collation_officer_panel":
     render_marquee_header()
     st.markdown(
-        '<div class="supervisor-header">🛡️ WARD SUPERVISOR COMMAND: FORM EC8A LOGS</div>',
+        f"""<div class="supervisor-header">🛡️ {current['collation_officer_command_title']}</div>""",
         unsafe_allow_html=True,
     )
-    if "sup_slip_preview" not in st.session_state:
-        st.session_state.sup_slip_preview = None
+    if "co_slip_preview" not in st.session_state:
+        st.session_state.co_slip_preview = None
 
-    with st.form("supervisor_form"):
+    with st.form("collation_officer_form"):
         c1, c2 = st.columns(2)
         with c1:
-            sup_name = st.text_input("Supervisor Full Name")
-            sup_phone = st.text_input("Phone Number")
-            sup_state = st.text_input("State Link Node", value="GOMBE STATE")
-            sup_lga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
-            sup_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(sup_lga, []))
-            sup_unit = st.text_input("Ward Unit Tracking Code/Number")
+            co_name = st.text_input(current["collation_officer_full_name"])
+            co_phone = st.text_input(current["phone_number"])
+            co_state = st.text_input(current["state_link_node"], value="GOMBE STATE")
+            co_lga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
+            co_ward = st.selectbox(current["your_ward"], LGA_WARD_DATA.get(co_lga, []))
+            co_unit = st.text_input(current["ward_unit_tracking_code"])
 
-        ward_id = f"{sup_lga}_{sup_ward}".replace(" ", "_").upper()
+        ward_id = f"{co_lga}_{co_ward}".replace(" ", "_").upper()
 
         with c2:
             tiers_selected = st.multiselect(
-                "Active Scope Assessment Matrix",
+                current["active_scope_assessment"],
                 [
                     "Federal House",
                     "Senatorial",
@@ -985,44 +1185,44 @@ if st.session_state.current_page == "supervisor_panel":
                 )
 
             st.number_input(
-                "Highest Party Vote Recorded", min_value=0, key="sup_high_vote"
+                current["highest_party_vote"], min_value=0, key="co_high_vote"
             )
             st.number_input(
-                "Principal Votes Cast Density", min_value=0, key="sup_pr_vote"
+                current["principal_votes_cast"], min_value=0, key="co_pr_vote"
             )
             st.file_uploader(
-                "Upload Supervisor Physical NIN Slip Link Asset",
+                current["upload_nin_slip"],
                 type=["pdf", "jpg", "png"],
             )
 
-        st.camera_input("Live Capture Sensor Matrix: Form EC8A Sheet")
+        st.camera_input(current["live_capture_ec8a"])
 
-        if st.form_submit_button("🔍 GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP"):
-            if not sup_name or not sup_phone or not sup_unit:
+        if st.form_submit_button(current["generate_preview_slip"]):
+            if not co_name or not co_phone or not co_unit:
                 st.error(
-                    "🛑 FORM ERROR: All core supervisor tracking strings must be completely specified before submission execution."
+                    "🛑 FORM ERROR: All core collation officer tracking strings must be completely specified before submission execution."
                 )
             else:
-                st.session_state.sup_slip_preview = {
-                    "Supervisor": sup_name,
-                    "Phone": sup_phone,
-                    "LGA": sup_lga,
-                    "Ward": sup_ward,
-                    "Unit": sup_unit,
+                st.session_state.co_slip_preview = {
+                    "Collation Officer": co_name,
+                    "Phone": co_phone,
+                    "LGA": co_lga,
+                    "Ward": co_ward,
+                    "Unit": co_unit,
                     "Tiers": ", ".join(tiers_selected),
-                    "High_Vote": int(st.session_state.get("sup_high_vote", 0)),
-                    "Principal_Votes": int(st.session_state.get("sup_pr_vote", 0)),
+                    "High_Vote": int(st.session_state.get("co_high_vote", 0)),
+                    "Principal_Votes": int(st.session_state.get("co_pr_vote", 0)),
                     "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
-    if st.session_state.sup_slip_preview is not None:
-        p_data = st.session_state.sup_slip_preview
+    if st.session_state.co_slip_preview is not None:
+        p_data = st.session_state.co_slip_preview
         st.markdown(
             f"""
         <div class="printable-slip-box">
             <div class="slip-header">🏛️ LSOEP NATIONAL ASSEMBLY INTEGRITY RECEIPT OVERVIEW</div>
             <div class="slip-row"><span>TIMESTAMP DATA:</span> <span>{p_data['Timestamp']}</span></div>
-            <div class="slip-row"><span>SUPERVISOR NAME:</span> <span>{p_data['Supervisor']}</span></div>
+            <div class="slip-row"><span>COLLATION OFFICER NAME:</span> <span>{p_data['Collation Officer']}</span></div>
             <div class="slip-row"><span>PHONE INTERFACE:</span> <span>{p_data['Phone']}</span></div>
             <div class="slip-row"><span>YOUR LGA:</span> <span>{p_data['LGA']}</span></div>
             <div class="slip-row"><span>YOUR WARD:</span> <span>{p_data['Ward']}</span></div>
@@ -1037,7 +1237,7 @@ if st.session_state.current_page == "supervisor_panel":
 
         col_v1, col_v2 = st.columns(2)
         with col_v1:
-            if st.button("🔒 CONFIRM METRICS: LOG INTO PRODUCTION ARRAYS"):
+            if st.button(current["confirm_and_log"]):
                 if ward_id in st.session_state.submitted_wards:
                     st.error(
                         "🛑 Results sheet indicators for this Ward coordinate set have already been locked."
@@ -1045,136 +1245,133 @@ if st.session_state.current_page == "supervisor_panel":
                 else:
                     st.session_state.submitted_wards[ward_id] = p_data["Timestamp"]
                     trigger_background_autosave()
-                    st.session_state.sup_slip_preview = None
+                    st.session_state.co_slip_preview = None
                     st.success("Thanks for your submission! You are appreciated.")
                     st.balloons()
                     time.sleep(1)
                     st.rerun()
         with col_v2:
-            if st.button("❌ ABORT TRANSACTION: CLEAR PREVIEW NODE STUB"):
-                st.session_state.sup_slip_preview = None
+            if st.button(current["abort_transaction"]):
+                st.session_state.co_slip_preview = None
                 st.warning("Preview storage wiped successfully.")
                 st.rerun()
 
 elif st.session_state.current_page == "agent_panel":
     render_marquee_header()
-    st.markdown("### 🗳️ POLLING UNIT AGENT: FIELD DATA TRANSFERS")
+    st.markdown(f"### 🗳️ {current['agent_panel_title']}")
     if "agt_slip_preview" not in st.session_state:
         st.session_state.agt_slip_preview = None
 
-    a1, a2 = st.columns(2)
-    with a1:
-        agt_name = st.text_input("Agent Full Operator Name")
-        agt_phone = st.text_input("Agent Communication Contact Phone")
-        agt_lga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
-        agt_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(agt_lga, []))
-        agt_pu_num = (
-            st.text_input("Polling Unit (PU) Identity Name Code")
-            .strip()
-            .replace(" ", "_")
-            .upper()
-        )
-
-    pu_id = f"{agt_lga}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
-
-    if agt_pu_num != "" and pu_id in st.session_state.submitted_pus:
-        st.error(
-            "🛑 Polling Unit entry parameter sequence matches locked profile record. Dropping link stream."
-        )
-    else:
-        with st.form("agent_form"):
-            with a2:
-                agt_tiers = st.multiselect(
-                    "Affirm Verification Parameters Scope",
-                    [
-                        "Federal House",
-                        "Senatorial",
-                        "Presidential",
-                        "Governorship Aspirant",
-                        "State House of Assembly",
-                    ],
-                    default=["Federal House"],
-                )
-
-                if agt_tiers:
-                    st.markdown(
-                        """
-                    **Unit Active Layout Validation Mapping Check:**<br>
-                    <div class="tier-box tier-rep">Federal House</div><div class="tier-box tier-sen">Senatorial</div><div class="tier-box tier-pres">Presidential</div><div class="tier-box tier-gov">Governorship</div><div class="tier-box tier-house">State House</div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                st.number_input(
-                    "Total Ballots Inside Unit Box Container",
-                    min_value=0,
-                    key="agt_tot_vote",
-                )
-                st.number_input(
-                    "Valid Votes Quantum Metric Total", min_value=0, key="agt_pr_vote"
-                )
-                st.file_uploader(
-                    "Upload Agent Verification NIN Slip Column File",
-                    type=["pdf", "jpg", "png"],
-                )
-            st.camera_input(
-                "Capture Local Unit Level Physical Document Ledger Asset Sheet"
+    with st.form("agent_form"):
+        a1, a2 = st.columns(2)
+        with a1:
+            agt_name = st.text_input(current["agent_full_name"])
+            agt_phone = st.text_input(current["agent_phone"])
+            agt_lga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
+            agt_ward = st.selectbox(
+                current["your_ward"], LGA_WARD_DATA.get(agt_lga, [])
+            )
+            agt_pu_num = (
+                st.text_input(current["polling_unit_id_code"])
+                .strip()
+                .replace(" ", "_")
+                .upper()
             )
 
-            if st.form_submit_button("🔍 COMPREHENSIVE ENTRY EVALUATION"):
-                if not agt_name or not agt_phone or not agt_pu_num:
-                    st.error(
-                        "🛑 FORM ERROR: Agent metadata strings must be completely specified before proceeding."
-                    )
-                else:
-                    st.session_state.agt_slip_preview = {
-                        "Agent": agt_name,
-                        "Phone": agt_phone,
-                        "LGA": agt_lga,
-                        "Ward": agt_ward,
-                        "PU": agt_pu_num,
-                        "Tiers": ", ".join(agt_tiers),
-                        "Total_Votes": int(st.session_state.get("agt_tot_vote", 0)),
-                        "Principal_Votes": int(st.session_state.get("agt_pr_vote", 0)),
-                        "Timestamp": datetime.datetime.now().strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                    }
-
-        if st.session_state.agt_slip_preview is not None:
-            a_data = st.session_state.agt_slip_preview
-            st.markdown(
-                f"""
-            <div class="printable-slip-box">
-                <div class="slip-header">🗳️ LSOEP FIELD OPERATOR REGISTERED FIELD SLIP LOG</div>
-                <div class="slip-row"><span>CAPTURED TIMESTAMP:</span> <span>{a_data['Timestamp']}</span></div>
-                <div class="slip-row"><span>AGENT NAME STAMP:</span> <span>{a_data['Agent']}</span></div>
-                <div class="slip-row"><span>CELLULAR INTERFACE:</span> <span>{a_data['Phone']}</span></div>
-                <div class="slip-row"><span>YOUR LGA:</span> <span>{a_data['LGA']}</span></div>
-                <div class="slip-row"><span>YOUR WARD:</span> <span>{a_data['Ward']}</span></div>
-                <div class="slip-row"><span>POLLING UNIT NUM:</span> <span>{a_data['PU']}</span></div>
-                <div class="slip-row"><span>AUDITED BALANCES:</span> <span>{a_data['Total_Votes']:}</span></div>
-                <div class="slip-row"><span>VALID QUANTUM LOG:</span> <span>{a_data['Principal_Votes']:}</span></div>
-            </div>
-            """,
-                unsafe_allow_html=True,
+        with a2:
+            bvas_serial = st.text_input(current["bvas_serial_number"])
+            accredited_count = st.number_input(
+                current["accredited_voters_count"], min_value=0
             )
 
-            av1, av2 = st.columns(2)
-            with av1:
-                if st.button("🔒 COMMIT METRICS CONFIGURATION AND ARCHIVE RECORD"):
-                    st.session_state.submitted_pus[pu_id] = a_data["Timestamp"]
-                    trigger_background_autosave()
-                    st.session_state.agt_slip_preview = None
-                    st.success("Thanks for your submission! You are appreciated.")
-                    st.balloons()
-                    time.sleep(1)
-                    st.rerun()
-            with av2:
-                if st.button("❌ DISCARD TRANSACTION BUFFER"):
-                    st.session_state.agt_slip_preview = None
-                    st.warning("Buffer variables cleared.")
-                    st.rerun()
+            bvas_failed = st.checkbox(current["bvas_failure_checkbox"])
+            if bvas_failed:
+                incident_details = st.text_area(current["bvas_incident_report"])
+            else:
+                incident_details = "N/A"
+
+        st.divider()
+        electoral_data = render_electoral_data_capture("AGENT")
+
+        internal_remarks = st.text_area(current["internal_remarks"])
+
+        st.camera_input("Capture Local Unit Level Physical Document Ledger Asset Sheet")
+
+        pu_id = f"{agt_lga}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
+
+        if st.form_submit_button(current["review_and_submit"]):
+            if not agt_name or not agt_phone or not agt_pu_num or not bvas_serial:
+                st.error(
+                    "🛑 FORM ERROR: Agent metadata and BVAS serial number must be completely specified."
+                )
+            elif pu_id in st.session_state.submitted_pus:
+                st.error(
+                    "🛑 Polling Unit entry parameter sequence matches locked profile record. Dropping link stream."
+                )
+            else:
+                st.session_state.agt_slip_preview = {
+                    "Agent": agt_name,
+                    "Phone": agt_phone,
+                    "LGA": agt_lga,
+                    "Ward": agt_ward,
+                    "PU": agt_pu_num,
+                    "BVAS_Serial": bvas_serial,
+                    "Accredited_Voters": accredited_count,
+                    "BVAS_Incident": incident_details,
+                    "Internal_Remarks": internal_remarks,
+                    "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "electoral_data": electoral_data,
+                }
+
+    if st.session_state.agt_slip_preview is not None:
+        a_data = st.session_state.agt_slip_preview
+        e_data = a_data.get("electoral_data", {})
+        st.info("Please review your submission before final commit.")
+        party_votes_str = "<br>".join(
+            [
+                f"&nbsp;&nbsp;- {p}: {v} votes"
+                for p, v in e_data.get("party_votes", {}).items()
+                if p
+            ]
+        )
+        st.markdown(
+            f"""
+        <div class="printable-slip-box">
+            <div class="slip-header">🗳️ LSOEP FIELD OPERATOR - PREVIEW</div>
+            <div class="slip-row"><span>AGENT NAME:</span> <span>{a_data['Agent']}</span></div>
+            <div class="slip-row"><span>LGA/WARD/PU:</span> <span>{a_data['LGA']}/{a_data['Ward']}/{a_data['PU']}</span></div>
+            <div class="slip-row"><span>BVAS SERIAL:</span> <span>{a_data['BVAS_Serial']}</span></div>
+            <div class="slip-row"><span>ACCREDITED VOTERS:</span> <span>{a_data['Accredited_Voters']}</span></div>
+            <div class="slip-row"><span>BVAS INCIDENT:</span> <span>{a_data['BVAS_Incident']}</span></div>
+            <hr>
+            <b>Electoral Data:</b><br>
+            <div class="slip-row"><span>&nbsp;Audited Tiers:</span> <span>{', '.join(e_data.get('tiers', []))}</span></div>
+            <div class="slip-row"><span>&nbsp;Vote Density:</span> <span>{e_data.get('density', 'N/A')}%</span></div>
+            <div>&nbsp;<b>Party Votes:</b><br>{party_votes_str}</div>
+            <hr>
+            <div class="slip-row"><span>INTERNAL REMARKS:</span> <span>{a_data['Internal_Remarks']}</span></div>
+            <hr>
+            <div class="slip-row"><span>TIMESTAMP:</span> <span>{a_data['Timestamp']}</span></div>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+        av1, av2 = st.columns(2)
+        with av1:
+            if st.button("🔒 COMMIT AND ARCHIVE RECORD", type="primary"):
+                st.session_state.submitted_pus[pu_id] = a_data
+                trigger_background_autosave()
+                st.session_state.agt_slip_preview = None
+                st.success("Thanks for your submission! You are appreciated.")
+                st.balloons()
+                time.sleep(1)
+                st.rerun()
+        with av2:
+            if st.button("❌ DISCARD PREVIEW"):
+                st.session_state.agt_slip_preview = None
+                st.warning("Preview cleared. You can enter the data again.")
+                st.rerun()
 
 elif st.session_state.current_page == "main_dashboard":
     render_marquee_header()
@@ -1310,7 +1507,7 @@ elif st.session_state.current_page == "main_dashboard":
                         "recycle_bin_pus",
                         "btn_cmd",
                         "recycle_bin_wards",
-                        "sup_v30_auth_sidebar",
+                        "co_v30_auth_sidebar",
                         "btn_skill",
                         "recycle_bin_registry",
                         "dl_btn_t1_dl",
@@ -1652,22 +1849,22 @@ elif st.session_state.current_page == "main_dashboard":
 elif st.session_state.current_page == "skill_form":
     render_marquee_header()
     st.markdown(
-        '<div class="white-registry-header">🛠 CONSTITUENT SKILL EMPOWERMENT POOL</div>',
+        f"""<div class="white-registry-header">{current['title']}</div>""",
         unsafe_allow_html=True,
     )
     with st.form("skill_form_engine"):
         k1, k2 = st.columns(2)
         with k1:
-            sv_name = st.text_input("Full name as displayed on NIN")
-            sv_phone = st.text_input("Applicant Contact Number")
-            sv_nin = st.text_input("Your NIN number")
-            sv_vin = st.text_input("your Voters card number")
-            sv_dob = st.date_input("Date of Birth", value=datetime.date(2000, 1, 1))
+            sv_name = st.text_input(current["name"])
+            sv_phone = st.text_input(current["applicant_contact_number"])
+            sv_nin = st.text_input(current["your_nin"])
+            sv_vin = st.text_input(current["your_voters_card"])
+            sv_dob = st.date_input(current["dob"], value=datetime.date(2000, 1, 1))
             sv_gender = st.selectbox(
-                "Gender Matrix", ["Male", "Female", "Prefer Not to Say"]
+                current["gender"], ["Male", "Female", "Prefer Not to Say"]
             )
             sv_disability = st.selectbox(
-                "Vulnerability/Disability Status",
+                current["disability_status"],
                 [
                     "None",
                     "Visual Impairment",
@@ -1677,11 +1874,11 @@ elif st.session_state.current_page == "skill_form":
                 ],
             )
             sv_file = st.file_uploader(
-                "Upload Profile NIN Slip Document Click", type=["pdf", "jpg", "png"]
+                current["upload_profile_nin"], type=["pdf", "jpg", "png"]
             )
         with k2:
-            klga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
-            kward = st.selectbox("Your Ward", LGA_WARD_DATA.get(klga, []))
+            klga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
+            kward = st.selectbox(current["your_ward"], LGA_WARD_DATA.get(klga, []))
             vocation_list = [
                 "ICT & AI Core Programming",
                 "Solar Renewable Energy Engineering",
@@ -1692,25 +1889,21 @@ elif st.session_state.current_page == "skill_form":
                 "Plumbing & Hydraulics Systems",
                 "Carpentry & Woodwork Manufacturing",
                 "Modern Hairdressing & Cosmetology",
-                "Other (Type Custom Vocation Below)",
+                current["other_vocation"],
             ]
-            sv_selection = st.selectbox(
-                "Vocational Domain Target Pool Sector", vocation_list
-            )
+            sv_selection = st.selectbox(current["vocational_domain"], vocation_list)
             custom_vocation = ""
-            if sv_selection == "Other (Type Custom Vocation Below)":
-                custom_vocation = st.text_input(
-                    "Type Your Choice Vocation Natively Here"
-                )
+            if sv_selection == current["other_vocation"]:
+                custom_vocation = st.text_input(current["custom_vocation_prompt"])
             st.divider()
             sv_palliative_check = st.selectbox(
-                "Have you received a palliative from this office before?", ["No", "Yes"]
+                current["prior_palliative_check"], ["No", "Yes"]
             )
 
-        sv_stmt = st.text_area("Candidate Skill Interest Statement Details")
-        sv_cam = st.camera_input("Biometric Security Verification Core Scan")
+        sv_stmt = st.text_area(current["candidate_statement"])
+        sv_cam = st.camera_input(current["biometric_scan"])
 
-        if st.form_submit_button("🚀 COMMIT APPLICATION TO TRAINING POOLS"):
+        if st.form_submit_button(current["submit"]):
             if (
                 not sv_name
                 or not sv_phone
@@ -1719,10 +1912,7 @@ elif st.session_state.current_page == "skill_form":
                 or not sv_stmt
                 or sv_file is None
                 or sv_cam is None
-                or (
-                    sv_selection == "Other (Type Custom Vocation Below)"
-                    and not custom_vocation
-                )
+                or (sv_selection == current["other_vocation"] and not custom_vocation)
             ):
                 st.error(
                     "🛑 FORM ERROR: All field entries on this registration pool form are strictly mandatory. Uploads and biometric camera checks must be valid."
@@ -1740,7 +1930,7 @@ elif st.session_state.current_page == "skill_form":
                 else:
                     final_skill = (
                         custom_vocation
-                        if sv_selection == "Other (Type Custom Vocation Below)"
+                        if sv_selection == current["other_vocation"]
                         else sv_selection
                     )
                     new_profile_row = {
