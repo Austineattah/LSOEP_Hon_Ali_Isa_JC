@@ -20,19 +20,34 @@ def styled_header(text, color="#191970", font_size="28px"):
 
 def remove_streamlit_chrome():
     """
-    Hides branding/menu while explicitly preserving navigation elements.
+    Aggressive removal of all Streamlit branding, including logos,
+    deploy buttons, and developer menus, while preserving navigation.
     """
     hide_css = """
     <style>
-        /* Hide menu, footer, and developer tools */
-        #MainMenu {visibility: hidden;}          
-        footer {visibility: hidden;}             
-        [data-testid="stToolbar"] {visibility: hidden !important;} 
+        /* Hide Hamburger Menu, Footer, and Toolbar */
+        #MainMenu, footer, [data-testid="stToolbar"] {
+            visibility: hidden !important;
+            display: none !important;
+        }
+
+        /* Hide 'About' link, deployment button, and default Streamlit logos */
+        [data-testid="stAppDeployButton"], 
+        [data-testid="stLogo"], 
+        [data-testid="stDecoration"] {
+            display: none !important;
+        }
+
+        /* Ensure header and navigation buttons remain visible */
+        header {
+            visibility: visible !important; 
+            background: transparent !important;
+        }
         
-        /* Ensure navigation and header controls remain visible */
-        [data-testid="stSidebarNav"] {visibility: visible !important;}
-        button[kind="header"] {visibility: visible !important;}
-        header {visibility: visible !important; background: transparent !important;}
+        button[kind="header"], [data-testid="stSidebarNav"], button {
+            visibility: visible !important;
+            z-index: 9999 !important;
+        }
     </style>
     """
     st.markdown(hide_css, unsafe_allow_html=True)

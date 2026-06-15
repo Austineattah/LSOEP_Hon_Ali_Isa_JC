@@ -11,11 +11,43 @@ import json
 import time
 import base64
 from sync_engine import engine
-from ui_modules import remove_streamlit_chrome
+from ui_modules import styled_header, remove_streamlit_chrome
 
 st.set_page_config(page_title="LSOEP Portal", layout="wide")
-
 remove_streamlit_chrome()
+
+st.logo("assets/nass_logo.png", size="large")
+
+PAGES = [
+    "skill_form",
+    "scholarship_form",
+    "palliative_gateway",
+    "cv_vault",
+    "cun_trigger",
+]
+
+with st.container():
+    col1, col2 = st.columns([1, 11])
+    with col1:
+        if st.button("⬅️"):
+            try:
+                current_index = PAGES.index(st.session_state.current_page)
+                if current_index > 0:
+                    st.session_state.current_page = PAGES[current_index - 1]
+                    st.rerun()
+            except ValueError:
+                st.session_state.current_page = PAGES[0]
+                st.rerun()
+    with col2:
+        if st.button("➡️"):
+            try:
+                current_index = PAGES.index(st.session_state.current_page)
+                if current_index < len(PAGES) - 1:
+                    st.session_state.current_page = PAGES[current_index + 1]
+                    st.rerun()
+            except ValueError:
+                st.session_state.current_page = PAGES[0]
+                st.rerun()
 
 # Initialize language in session state
 if "lang" not in st.session_state:
