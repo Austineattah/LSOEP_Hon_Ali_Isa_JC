@@ -11,6 +11,11 @@ import json
 import time
 import base64
 from sync_engine import engine
+from ui_modules import remove_streamlit_chrome
+
+st.set_page_config(page_title="LSOEP Portal", layout="wide")
+
+remove_streamlit_chrome()
 
 # Initialize language in session state
 if "lang" not in st.session_state:
@@ -705,31 +710,6 @@ if not IS_LOCAL_SANDBOX:
         conn = st.connection("postgresql", type="sql")
     except Exception:
         conn = None
-
-# ==============================================================================
-# UI STYLE CONFIGURATION & REGAL EXPANDED GLASSMORPHISM KEYFRAMES
-# ==============================================================================
-st.set_page_config(
-    page_title="LSOEP Portal",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-    menu_items={"Get Help": None, "Report a bug": None, "About": None},
-)
-
-
-def hide_streamlit_branding():
-    hide_st_style = """
-        <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        [data-testid="stToolbar"] {visibility: hidden !important;}
-        </style>
-    """
-    st.markdown(hide_st_style, unsafe_allow_html=True)
-
-
-hide_streamlit_branding()
 
 render_language_toggle()
 
