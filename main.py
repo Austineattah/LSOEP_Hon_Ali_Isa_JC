@@ -13,41 +13,15 @@ import base64
 from sync_engine import engine
 from ui_modules import styled_header, remove_streamlit_chrome
 
+# 1. Page Configuration
 st.set_page_config(page_title="LSOEP Portal", layout="wide")
+
+# 2. UI Cleanup (Hide branding/dev tools)
 remove_streamlit_chrome()
 
-st.logo("assets/nass_logo.png", size="large")
-
-PAGES = [
-    "skill_form",
-    "scholarship_form",
-    "palliative_gateway",
-    "cv_vault",
-    "cun_trigger",
-]
-
-with st.container():
-    col1, col2 = st.columns([1, 11])
-    with col1:
-        if st.button("⬅️"):
-            try:
-                current_index = PAGES.index(st.session_state.current_page)
-                if current_index > 0:
-                    st.session_state.current_page = PAGES[current_index - 1]
-                    st.rerun()
-            except ValueError:
-                st.session_state.current_page = PAGES[0]
-                st.rerun()
-    with col2:
-        if st.button("➡️"):
-            try:
-                current_index = PAGES.index(st.session_state.current_page)
-                if current_index < len(PAGES) - 1:
-                    st.session_state.current_page = PAGES[current_index + 1]
-                    st.rerun()
-            except ValueError:
-                st.session_state.current_page = PAGES[0]
-                st.rerun()
+# 3. Official Branding (Place it here)
+# This will replace the default Streamlit logo with your Digital Mace
+st.logo("assets/digital_mace.png", size="large")
 
 # Initialize language in session state
 if "lang" not in st.session_state:
@@ -956,7 +930,7 @@ st.markdown(
     
     .stTextInput label p { color: #00E5FF !important; font-weight: 700 !important; }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
