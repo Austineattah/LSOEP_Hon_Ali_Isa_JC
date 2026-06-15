@@ -10,6 +10,7 @@ import os
 import json
 import time
 import base64
+from sync_engine import engine
 
 # Initialize language in session state
 if "lang" not in st.session_state:
@@ -709,11 +710,26 @@ if not IS_LOCAL_SANDBOX:
 # UI STYLE CONFIGURATION & REGAL EXPANDED GLASSMORPHISM KEYFRAMES
 # ==============================================================================
 st.set_page_config(
-    page_title="LSOEP TITAN GOMBE | HON. ALI ISA JC PhD HUB",
-    page_icon="🏛️",
+    page_title="LSOEP Portal",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
+    menu_items={"Get Help": None, "Report a bug": None, "About": None},
 )
+
+
+def hide_streamlit_branding():
+    hide_st_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        [data-testid="stToolbar"] {visibility: hidden !important;}
+        </style>
+    """
+    st.markdown(hide_st_style, unsafe_allow_html=True)
+
+
+hide_streamlit_branding()
 
 render_language_toggle()
 
@@ -1097,44 +1113,61 @@ def render_institutional_purge_engine(key_suffix):
             st.sidebar.rerun()
 
 
-def render_electoral_data_capture(portal_type="AGENT"):
+def render_polling_unit_portal():
     st.subheader("POLLING UNIT AGENT FIELD DATA")
 
-    # 1. Tiers Audited Vector Checkbox Mapping
-    st.markdown("### Tiers Audited Vector")
-    tiers = [
-        "Federal House",
-        "Senatorial",
-        "Presidential",
-        "Governorship",
-        "State House",
-    ]
-    selected_tiers = [
-        tier for tier in tiers if st.checkbox(tier, key=f"{portal_type}_{tier}")
-    ]
+    with st.form("agent_form"):
+        pu_id = st.text_input("Polling Unit ID")
+        bvas_serial = st.text_input("BVAS Serial Number (Reference Only)")
 
-    # 2. Top 4 Party Vote Recording
-    st.markdown("### Top 4 Party Votes")
-    cols = st.columns(4)
-    party_votes = {}
-    for i in range(4):
-        with cols[i]:
-            party_name = st.text_input(f"Party {i+1}", key=f"{portal_type}_p{i}")
-            party_votes[party_name] = st.number_input(
-                f"Votes", min_value=0, key=f"{portal_type}_v{i}"
+        is_incident = st.checkbox("Report Incident / BVAS Absence")
+        details = st.text_area("Incident Details") if is_incident else "N/A"
+
+        tier = st.multiselect(
+            "Tiers Audited",
+            [
+                "Federal",
+                "Senatorial",
+                "Presidential",
+                "Governorship",
+                "State House",
+            ],
+        )
+
+        if st.form_submit_button("Submit to War Room Sync"):
+            engine.record_field_data(
+                pu_id, bvas_serial, is_incident, details, ", ".join(tier)
             )
+            st.success("Data successfully synced to War Room.")
 
-    # 3. Principal Votes Cast Density
-    st.markdown("### Principal Votes Cast Density")
-    density = st.slider(
-        "Select Vote Density Index (0-100%)",
-        0,
-        100,
-        50,
-        help="Ratio of total votes cast vs. total registered voters.",
+
+@st.fragment(run_every=5.0)
+def render_live_sync_array(tier_filter):
+    # Fetch data from your database based on the selected tier
+    # Replace this with your actual database query (e.g., sqlalchemy/st.connection)
+    df = engine.fetch_latest_results_from_db(tier=tier_filter)
+
+    st.subheader(f"Live Sync: {tier_filter} Tier")
+    st.dataframe(df, use_container_width=True)
+    st.caption(f"Last sync: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+
+
+def render_war_room_dashboard():
+    st.subheader("Cross-National Multi-Tier Election Verification War Room Sync Arrays")
+
+    tier = st.selectbox("Select Tier", ["Presidential", "Senatorial", "Federal House"])
+    render_live_sync_array(tier)
+
+    df = st.session_state.war_room_sync
+
+    # Visual Logic: Highlight incidents in the array
+    st.dataframe(
+        df.style.map(
+            lambda x: "background-color: #8B0000; color: white" if x == True else "",
+            subset=["incident_status"],
+        ),
+        use_container_width=True,
     )
-
-    return {"tiers": selected_tiers, "party_votes": party_votes, "density": density}
 
 
 # ==============================================================================
@@ -1258,120 +1291,7 @@ if st.session_state.current_page == "collation_officer_panel":
 
 elif st.session_state.current_page == "agent_panel":
     render_marquee_header()
-    st.markdown(f"### 🗳️ {current['agent_panel_title']}")
-    if "agt_slip_preview" not in st.session_state:
-        st.session_state.agt_slip_preview = None
-
-    with st.form("agent_form"):
-        a1, a2 = st.columns(2)
-        with a1:
-            agt_name = st.text_input(current["agent_full_name"])
-            agt_phone = st.text_input(current["agent_phone"])
-            agt_lga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
-            agt_ward = st.selectbox(
-                current["your_ward"], LGA_WARD_DATA.get(agt_lga, [])
-            )
-            agt_pu_num = (
-                st.text_input(current["polling_unit_id_code"])
-                .strip()
-                .replace(" ", "_")
-                .upper()
-            )
-
-        with a2:
-            bvas_serial = st.text_input(current["bvas_serial_number"])
-            accredited_count = st.number_input(
-                current["accredited_voters_count"], min_value=0
-            )
-
-            bvas_failed = st.checkbox(current["bvas_failure_checkbox"])
-            if bvas_failed:
-                incident_details = st.text_area(current["bvas_incident_report"])
-            else:
-                incident_details = "N/A"
-
-        st.divider()
-        electoral_data = render_electoral_data_capture("AGENT")
-
-        internal_remarks = st.text_area(current["internal_remarks"])
-
-        st.camera_input("Capture Local Unit Level Physical Document Ledger Asset Sheet")
-
-        pu_id = f"{agt_lga}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
-
-        if st.form_submit_button(current["review_and_submit"]):
-            if not agt_name or not agt_phone or not agt_pu_num or not bvas_serial:
-                st.error(
-                    "🛑 FORM ERROR: Agent metadata and BVAS serial number must be completely specified."
-                )
-            elif pu_id in st.session_state.submitted_pus:
-                st.error(
-                    "🛑 Polling Unit entry parameter sequence matches locked profile record. Dropping link stream."
-                )
-            else:
-                st.session_state.agt_slip_preview = {
-                    "Agent": agt_name,
-                    "Phone": agt_phone,
-                    "LGA": agt_lga,
-                    "Ward": agt_ward,
-                    "PU": agt_pu_num,
-                    "BVAS_Serial": bvas_serial,
-                    "Accredited_Voters": accredited_count,
-                    "BVAS_Incident": incident_details,
-                    "Internal_Remarks": internal_remarks,
-                    "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "electoral_data": electoral_data,
-                }
-
-    if st.session_state.agt_slip_preview is not None:
-        a_data = st.session_state.agt_slip_preview
-        e_data = a_data.get("electoral_data", {})
-        st.info("Please review your submission before final commit.")
-        party_votes_str = "<br>".join(
-            [
-                f"&nbsp;&nbsp;- {p}: {v} votes"
-                for p, v in e_data.get("party_votes", {}).items()
-                if p
-            ]
-        )
-        st.markdown(
-            f"""
-        <div class="printable-slip-box">
-            <div class="slip-header">🗳️ LSOEP FIELD OPERATOR - PREVIEW</div>
-            <div class="slip-row"><span>AGENT NAME:</span> <span>{a_data['Agent']}</span></div>
-            <div class="slip-row"><span>LGA/WARD/PU:</span> <span>{a_data['LGA']}/{a_data['Ward']}/{a_data['PU']}</span></div>
-            <div class="slip-row"><span>BVAS SERIAL:</span> <span>{a_data['BVAS_Serial']}</span></div>
-            <div class="slip-row"><span>ACCREDITED VOTERS:</span> <span>{a_data['Accredited_Voters']}</span></div>
-            <div class="slip-row"><span>BVAS INCIDENT:</span> <span>{a_data['BVAS_Incident']}</span></div>
-            <hr>
-            <b>Electoral Data:</b><br>
-            <div class="slip-row"><span>&nbsp;Audited Tiers:</span> <span>{', '.join(e_data.get('tiers', []))}</span></div>
-            <div class="slip-row"><span>&nbsp;Vote Density:</span> <span>{e_data.get('density', 'N/A')}%</span></div>
-            <div>&nbsp;<b>Party Votes:</b><br>{party_votes_str}</div>
-            <hr>
-            <div class="slip-row"><span>INTERNAL REMARKS:</span> <span>{a_data['Internal_Remarks']}</span></div>
-            <hr>
-            <div class="slip-row"><span>TIMESTAMP:</span> <span>{a_data['Timestamp']}</span></div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-        av1, av2 = st.columns(2)
-        with av1:
-            if st.button("🔒 COMMIT AND ARCHIVE RECORD", type="primary"):
-                st.session_state.submitted_pus[pu_id] = a_data
-                trigger_background_autosave()
-                st.session_state.agt_slip_preview = None
-                st.success("Thanks for your submission! You are appreciated.")
-                st.balloons()
-                time.sleep(1)
-                st.rerun()
-        with av2:
-            if st.button("❌ DISCARD PREVIEW"):
-                st.session_state.agt_slip_preview = None
-                st.warning("Preview cleared. You can enter the data again.")
-                st.rerun()
+    render_polling_unit_portal()
 
 elif st.session_state.current_page == "main_dashboard":
     render_marquee_header()
@@ -1619,98 +1539,7 @@ elif st.session_state.current_page == "main_dashboard":
         render_institutional_purge_engine("t6_purge")
 
     with tabs[6]:
-        st.subheader(
-            "🗳️ Cross-National Multi-Tier Election Verification War Room Sync Arrays"
-        )
-        state_query_search = st.text_input(
-            "Type target State name to evaluate returns parameters:", key="nat_search"
-        ).strip()
-        if state_query_search:
-            matched_state = None
-            for key in STATE_DATA_LEDGER.keys():
-                if state_query_search.lower() == key.lower():
-                    matched_state = key
-                    break
-            if matched_state:
-                registered_calc = 1200000 + (len(matched_state) * 54321)
-                turnout_calc = 600000 + (len(matched_state) * 21043)
-                tally_calc = 550000 + (len(matched_state) * 19280)
-                st.success(
-                    f"📊 **{matched_state} Core Operational Index Extracted Mapping Safely:**"
-                )
-                tc1, tc2, tc3 = st.columns(3)
-                tc1.metric("INEC Total Registered Base", f"{registered_calc:,}")
-                tc2.metric("Audited Ballots Turnout", f"{turnout_calc:,}")
-                tc3.metric("🔴 Presidential Confirmed Tally", f"{tally_calc:,}")
-            else:
-                st.warning(
-                    "State identifier token not located inside target administrative tables. Check characters pattern alignment."
-                )
-
-        national_votes_calculated_sum = sum(
-            (550000 + (len(k) * 19280)) for k in STATE_DATA_LEDGER.keys()
-        )
-
-        # ACTIVE 5-TIER COMPLETE ELECTION MONITORING FLAGS
-        st.markdown(
-            f"""
-        **Static Visual Alignment Layout Flags Check:**
-        * <div class="tier-box tier-pres" style="width:100%; text-align:left;">🔴 Presidential Accumulation Tally — <b style="float:right;">{national_votes_calculated_sum:,} Total Clean Votes</b></div>
-        * <div class="tier-box tier-sen" style="width:100%; text-align:left;">🔵 Senatorial Accumulation Tally — <b style="float:right;">24,815,402 Valid Ballots</b></div>
-        * <div class="tier-box tier-rep" style="width:100%; text-align:left;">🟢 Federal Houses Verification Array — <b style="float:right;">Operational Data Nodes Syncing</b></div>
-        * <div class="tier-box tier-gov" style="width:100%; text-align:left;">🟣 Governorship Strategic Matrix Feed — <b style="float:right;">Live Field Pipeline Stream</b></div>
-        * <div class="tier-box tier-house" style="width:100%; text-align:left;">🟠 State Houses of Assembly Returns Ledger — <b style="float:right;">Unit Validation Engine Armed</b></div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-        st.divider()
-        st.markdown("### 📡 Continuous Automated Pipeline Result Scraper Matrix Entry")
-        target_state_scoop = st.selectbox(
-            "Select Target State Node to Scoop Results",
-            list(STATE_DATA_LEDGER.keys()),
-            key="sync_state_scoop_select",
-        )
-
-        if st.button(
-            "⚡ EXECUTE AUTOMATIC NATIONAL DATA SCOOP", key="btn_trigger_scoop_votes"
-        ):
-            st.success(
-                f"🎉 Channel tunneled cleanly to Live National Data Node. Parsing INEC blocks configuration arrays..."
-            )
-            scoop_records = []
-            selected_state_data = STATE_DATA_LEDGER[target_state_scoop]
-            for lga_name, wards_list in selected_state_data.items():
-                for ward_name in wards_list:
-                    for pu_idx in range(1, 3):
-                        pu_code = f"PU{pu_idx:03d}"
-                        scoop_records.append(
-                            {
-                                "State Node": target_state_scoop,
-                                "INEC LGA Boundary": lga_name,
-                                "INEC Verified Ward Unit": ward_name.upper(),
-                                "Polling Unit Identifier": f"{ward_name[:3].upper()}-{pu_code}",
-                                "Presidential Tally (Red)": 135 + (pu_idx * 16),
-                                "Senatorial Tally (Blue)": 245 + (pu_idx * 22),
-                                "House of Reps Tally (Green)": 115 + (pu_idx * 12),
-                                "Governorship Tally (Purple)": 190 + (pu_idx * 18),
-                                "State House Tally (Orange)": 155 + (pu_idx * 14),
-                            }
-                        )
-            st.session_state.last_scooped_df = pd.DataFrame(scoop_records)
-            st.dataframe(st.session_state.last_scooped_df, width="stretch")
-            st.bar_chart(
-                st.session_state.last_scooped_df.set_index("Polling Unit Identifier")[
-                    ["Presidential Tally (Red)", "Senatorial Tally (Blue)"]
-                ]
-            )
-
-        if "last_scooped_df" in st.session_state:
-            render_module_download_trigger(
-                st.session_state.last_scooped_df,
-                "National_Election_Scoop",
-                "election_dl",
-            )
+        render_war_room_dashboard()
         render_institutional_purge_engine("t7_purge")
 
     with tabs[7]:
