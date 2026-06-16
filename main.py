@@ -1,1685 +1,137 @@
-# ==============================================================================
-# PROJECT: LSOEP TITAN GOMBE - CORE ENGINE INTERFACE
-# REVISION: v35.0.0 [HAUSA LANG, COLLATION OFFICER, BVAS UPDATE]
-# ==============================================================================
-
 import streamlit as st
-import pandas as pd
 import datetime
-import os
-import json
 import time
-import base64
-from sync_engine import engine
-from ui_modules import styled_header, remove_streamlit_chrome
+import pandas as pd
 
-# 1. Page Configuration
-st.set_page_config(page_title="LSOEP Portal", layout="wide")
-
-# 2. UI Cleanup (Hide branding/dev tools)
-remove_streamlit_chrome()
-
-# 3. Official Branding (Place it here)
-# This will replace the default Streamlit logo with your Digital Mace
-st.logo("assets/digital_mace.png", size="large")
-
-# Initialize language in session state
-if "lang" not in st.session_state:
-    st.session_state.lang = "English"
-
-
-# Language toggle component
-def render_language_toggle():
-    col1, col2, col3 = st.columns([6, 1, 1])
-    with col3:
-        if st.button("Hausa / English"):
-            st.session_state.lang = (
-                "Hausa" if st.session_state.lang == "English" else "English"
-            )
-            st.rerun()
-
+from styling import apply_styling
+from utils import initialize_and_recover_system_states, trigger_background_autosave
+from registry import LGA_WARD_DATA
+from ui_modules import render_marquee_header, render_mace_flash
+from panels import supervisor_panel, agent_panel, main_dashboard
 
 # ==============================================================================
-# GLOBAL LANGUAGE DICTIONARY
+# INITIALIZATION
 # ==============================================================================
-text_content = {
-    "English": {
-        "title": "Constituency Outreach Portal",
-        "name": "Full Name",
-        "submit": "Submit",
-        "command_hub_key": "COMMAND HUB KEY",
-        "official_facebook": "Hon. Ali Isa JC Official Facebook",
-        "skill_vocation_pool": "SKILL VOCATION POOL",
-        "student_scholarship": "STUDENT SCHOLARSHIP/GRANT",
-        "palliative_enrollment": "CONSTITUENT PALLIATIVE ENROLLMENT",
-        "cv_vault": "CV & ARTISAN VAULT",
-        "community_urgent_need": "COMMUNITY URGENT NEED",
-        "trigger_registration": "TRIGGER REGISTRATION INTERFACE",
-        "field_auth_core": "Field Authentication Core",
-        "collation_officer_key": "COLLATION OFFICER KEY",
-        "polling_unit_agent_key": "POLLING UNIT AGENT KEY",
-        "collation_officer_remarks": "Collation Officer Remarks/Field Observations",
-        "agent_remarks": "Agent Remarks/Field Observations",
-        "header_title": "HONOURABLE ALI ISA JC PhD",
-        "header_subtitle": "MINORITY WHIP<br>BILLIRI/BALANGA FEDERAL CONSTITUENCY",
-        "header_geo_stamp": "GOMBE STATE",
-        "marquee_text": "HONOURABLE ALI ISA JC CARES..... SAME VISION BUT DIFFERENT PLATFORM TO SERVE THE GOOD PEOPLE OF BILLIRI/BALANGA WITH INTEGRITY, TRANSPARENCY, ACCOUNTABILITY DRIVEN BY PEOPLE ORIENTED PROGRAMS.",
-        "collation_officer_command_title": "COLLATION OFFICER COMMAND: FORM EC8A LOGS",
-        "collation_officer_full_name": "Collation Officer Full Name",
-        "phone_number": "Phone Number",
-        "state_link_node": "State Link Node",
-        "your_lga": "Your LGA",
-        "your_ward": "Your Ward",
-        "ward_unit_tracking_code": "Ward Unit Tracking Code/Number",
-        "active_scope_assessment": "Active Scope Assessment Matrix",
-        "highest_party_vote": "Highest Party Vote Recorded",
-        "principal_votes_cast": "Principal Votes Cast Density",
-        "upload_nin_slip": "Upload Collation Officer Physical NIN Slip Link Asset",
-        "live_capture_ec8a": "Live Capture Sensor Matrix: Form EC8A Sheet",
-        "generate_preview_slip": "GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP",
-        "confirm_and_log": "CONFIRM METRICS: LOG INTO PRODUCTION ARRAYS",
-        "abort_transaction": "ABORT TRANSACTION: CLEAR PREVIEW NODE STUB",
-        "agent_panel_title": "POLLING UNIT AGENT: FIELD DATA TRANSFERS",
-        "agent_full_name": "Agent Full Operator Name",
-        "agent_phone": "Agent Communication Contact Phone",
-        "polling_unit_id_code": "Polling Unit (PU) Identity Name Code",
-        "bvas_serial_number": "Enter BVAS Serial Number",
-        "accredited_voters_count": "Number of Accredited Voters",
-        "bvas_failure_checkbox": "BVAS System Failure / Absent?",
-        "bvas_incident_report": "Provide Incident Report (Reason for BVAS Absence)",
-        "internal_remarks": "Internal Remarks (For Agent Review Only)",
-        "review_and_submit": "Review & Submit Data",
-        "applicant_contact_number": "Applicant Contact Number",
-        "your_nin": "Your NIN number",
-        "your_voters_card": "Your Voters card number",
-        "dob": "Date of Birth",
-        "gender": "Gender Matrix",
-        "disability_status": "Vulnerability/Disability Status",
-        "upload_profile_nin": "Upload Profile NIN Slip Document Click",
-        "vocational_domain": "Vocational Domain Target Pool Sector",
-        "other_vocation": "Other (Type Custom Vocation Below)",
-        "custom_vocation_prompt": "Type Your Choice Vocation Natively Here",
-        "prior_palliative_check": "Have you received a palliative from this office before?",
-        "candidate_statement": "Candidate Skill Interest Statement Details",
-        "biometric_scan": "Biometric Security Verification Core Scan",
-    },
-    "Hausa": {
-        "title": "Dandalin Sadarwa na Mazabu",
-        "name": "Cikakken Suna",
-        "submit": "Aika",
-        "command_hub_key": "MABUDIN HUKUMAR Gudanarwa",
-        "official_facebook": "Shafin Facebook na Gwamna Hon. Ali Isa JC",
-        "skill_vocation_pool": "TARIN KWAREWAR SANA'A",
-        "student_scholarship": "GURABUN KARATU/TALLAFIN DALIBAI",
-        "palliative_enrollment": "RAJISTAR TALAKAWA DON TALLAFI",
-        "cv_vault": "MA'AJIYAR CV & MASANA",
-        "community_urgent_need": "BUKATUN AL'UMMA NA GAGGAWA",
-        "trigger_registration": "KADDAMAR DA INTERFACE NA RAJISTA",
-        "field_auth_core": "Tabbatar da Gaskiyar Bayanai a Fili",
-        "collation_officer_key": "MABUDIN JAMI'IN TARAYAWA",
-        "polling_unit_agent_key": "MABUDIN WAKILIN RUMBUN ZABE",
-        "collation_officer_remarks": "Bayanai/Abubuwan da Jami'in Tarayawa ya lura dasu",
-        "agent_remarks": "Bayanai/Abubuwan da Wakili ya lura dasu",
-        "header_title": "HONOURABLE ALI ISA JC PhD",
-        "header_subtitle": "SHUGABAN MARASA RINJAYE<br>MAZABAR TARAYYA TA BILLIRI/BALANGA",
-        "header_geo_stamp": "JIHAR GOMBE",
-        "marquee_text": "HONOURABLE ALI ISA JC KULA..... IRIN WANNAN HANGEN NESAN AMMA DANDAMALI DABAN DOMIN YI WA JAMA'AR BILLIRI/BALANGA HIDIMA DA AMINCI, GASKIYA, DA KUMA TABBATAR DA SHIRYE-SHIRYEN DA SUKA DACE DA JAMA'A.",
-        "collation_officer_command_title": "UMURNIN JAMI'IN TARAYAWA: BAYANAN FORM EC8A",
-        "collation_officer_full_name": "Cikakken Sunan Jami'in Tarayawa",
-        "phone_number": "Lambar Waya",
-        "state_link_node": "Jiha",
-        "your_lga": "Karamar Hukumar ku",
-        "your_ward": "Mazabar ku",
-        "ward_unit_tracking_code": "Lambar Bibiyar Rukunin Mazaba",
-        "active_scope_assessment": "Matrix Gwajin Iyakokin Aiki",
-        "highest_party_vote": "Mafi Girman Adadin Kuri'un Jam'iyya",
-        "principal_votes_cast": "Adadin Jimillar Kuri'un da aka Kada",
-        "upload_nin_slip": "Sanya Hoton Katin NIN na Jami'in Tarayawa",
-        "live_capture_ec8a": "Na'urar Daukar Hoton Takardar Form EC8A kai tsaye",
-        "generate_preview_slip": "HAIFAR DA TAKARDAR DUBA BAYANAI",
-        "confirm_and_log": "TABBATAR DA BAYANAI: SHIGA CIKIN MA'AJIYAR BAYANAI",
-        "abort_transaction": "SOKE AIKI: SHARE BAYANAN DUBAWA",
-        "agent_panel_title": "WAKILIN RUMBUN ZABE: AIKO BAYANAI DAGA FILI",
-        "agent_full_name": "Cikakken Sunan Wakilin Aiki",
-        "agent_phone": "Lambar Wayar Sadarwa ta Wakili",
-        "polling_unit_id_code": "Sunan Kasa na Rumbun Zabe (PU)",
-        "bvas_serial_number": "Shigar da Lambar Serial ta BVAS",
-        "accredited_voters_count": "Adadin Masu Kada Kuri'a da aka Tabbatar",
-        "bvas_failure_checkbox": "Na'urar BVAS ta Samu Matsala / Ba a kawo ba?",
-        "bvas_incident_report": "Bayar da Rahoton Lamarin (Dalilin rashin BVAS)",
-        "internal_remarks": "Bayanai na Cikin Gida (Don Dubawar Wakili Kadai)",
-        "review_and_submit": "Duba & Aika Bayanai",
-        "applicant_contact_number": "Lambar Waya ta Mai nema",
-        "your_nin": "Lambarka ta NIN",
-        "your_voters_card": "Lambarka ta katin zabe",
-        "dob": "Ranar Haihuwa",
-        "gender": "Jinsi",
-        "disability_status": "Yanayin Rauni/Nakasa",
-        "upload_profile_nin": "Danna don Sanya Takardar NIN",
-        "vocational_domain": "Sashin Koyon Sana'a",
-        "other_vocation": "Wata (Rubuta wata sana'ar a kasa)",
-        "custom_vocation_prompt": "Rubuta Sana'ar da kake so a nan",
-        "prior_palliative_check": "Ka taba samun tallafi daga wannan ofis a baya?",
-        "candidate_statement": "Bayanin Sha'awar Kwarewar dan takara",
-        "biometric_scan": "Binciken Tsaro na Biometric",
-    },
-}
-
-# Use these variables in your UI
-current = text_content[st.session_state.lang]
-
-
-# ==============================================================================
-# IMAGE HANDLING HELPER
-# ==============================================================================
-def image_to_base64(path):
-    if not os.path.exists(path):
-        return None
-    with open(path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode()
-
-
-# ==============================================================================
-# DATA ARCHITECTURE LAYER: BALANGA/BILLIRI ADMINISTRATIVE MATRIX (EXPLICIT DECLARATION)
-# ==============================================================================
-
-GEOGRAPHY = {
-    "Billiri LGA": [
-        "BAGANJE NORTH",
-        "BAGANJE SOUTH",
-        "BARE",
-        "BILLIRI NORTH",
-        "BILLIRI SOUTH",
-        "KALMAI",
-        "TAL",
-        "TANGLANG",
-        "TODI",
-        "TUDU KWAYA",
-    ],
-    "Balanga LGA": [
-        "BAMBAM",
-        "BANGU",
-        "DADIYA",
-        "GELENGU / BALANGA",
-        "KINDIYO",
-        "KULANI / DEGRE / SIKKAM",
-        "MWONA",
-        "NYUWAR / JESSU",
-        "SWA / REF / W. WAJA",
-        "TALASSE / DONG / REME",
-    ],
-}
-
-LGA_WARD_DATA = {
-    "BILLIRI": [
-        "BAGANJE NORTH",
-        "BAGANJE SOUTH",
-        "BARE",
-        "BILLIRI NORTH",
-        "BILLIRI SOUTH",
-        "KALMAI",
-        "TAL",
-        "TANGLANG",
-        "TODI",
-        "TUDU KWAYA",
-    ],
-    "BALANGA": [
-        "BAMBAM",
-        "BANGU",
-        "DADIYA",
-        "GELENGU / BALANGA",
-        "KINDIYO",
-        "KULANI / DEGRE / SIKKAM",
-        "MWONA",
-        "NYUWAR / JESSU",
-        "SWA / REF / W. WAJA",
-        "TALASSE / DONG / REME",
-    ],
-}
-
-MOCK_DATA_REGISTRY = [
-    {
-        "ID": "LSOEP-GMB-BIL-001",
-        "Name": "John Ochui Ture",
-        "LGA": "Billiri LGA",
-        "Ward": "TURE",
-        "NIN": "12345678901",
-        "Status": "Verified",
-        "Allocation": "SME Seed Capital",
-    },
-    {
-        "ID": "LSOEP-GMB-BAL-002",
-        "Name": "Mary Akpan Talasse",
-        "LGA": "Balanga LGA",
-        "Ward": "TALASSE",
-        "NIN": "98765432109",
-        "Status": "Verified",
-        "Allocation": "Agro-Development Grant",
-    },
-    {
-        "ID": "LSOEP-GMB-BIL-003",
-        "Name": "Peter Ogar Kalmai",
-        "LGA": "Billiri LGA",
-        "Ward": "KALMAI",
-        "NIN": "45678912301",
-        "Status": "Pending Review",
-        "Allocation": "Educational Bursary",
-    },
-    {
-        "ID": "LSOEP-GMB-BAL-004",
-        "Name": "Grace Etta Swa",
-        "LGA": "Balanga LGA",
-        "Ward": "SWA",
-        "NIN": "78912345602",
-        "Status": "Verified",
-        "Allocation": "Dry Season Irrigation Support",
-    },
-    {
-        "ID": "LSOEP-GMB-BIL-005",
-        "Name": "Michael Besong Todi",
-        "LGA": "Billiri LGA",
-        "Ward": "TODI",
-        "NIN": "32165498705",
-        "Status": "Flagged",
-        "Allocation": "None - Verification Required",
-    },
-]
-
-
-# ==============================================================================
-# MASTER NATIONAL ADMINISTRATIVE GEOGRAPHY VAULT (ALL 36 STATES + FCT)
-# ==============================================================================
-STATE_DATA_LEDGER = {
-    "Abia State": {
-        "ABA NORTH": ["Eziama", "Industrial Area", "Osusu I", "Osusu II", "Uratta"],
-        "ABA SOUTH": ["Aba River", "Aba Town Hall", "Enyimba", "Asa Triangle"],
-        "OHAFIA": ["Ania", "Ohafor", "Ohafia Urban"],
-        "UMUAHIA NORTH": ["Ibeku East I", "Ibeku East II", "Umuahia Urban I"],
-    },
-    "Adamawa State": {
-        "YOLA NORTH": ["Ajiya", "Gbadabiri", "Nassarowo", "Yolde Pate"],
-        "YOLA SOUTH": ["Adarawo", "Bole Yolde", "Makama", "Mbamba"],
-        "MUBI NORTH": ["Lokuwa", "Digil", "Yelwa"],
-        "DEMSA": ["Demsa Moro", "Bille", "Gwamba"],
-    },
-    "Akwa Ibom State": {
-        "UYO": ["Uyo Urban I", "Uyo Urban II", "Etoi I", "Etoi II", "Offot I"],
-        "EKET": ["Eket Urban I", "Eket Urban II", "Afaha Clan", "Okon Clan"],
-        "IKOT EKPENE": ["Ikot Ekpene Urban I", "Ikot Ekpene Urban II", "Amayam"],
-        "ORON": ["Oron Urban I", "Oron Urban II", "Oron Urban III"],
-    },
-    "Anambra State": {
-        "AWKA NORTH": ["Achalla I", "Achalla II", "Amansea", "Mgbakwu"],
-        "AWKA SOUTH": ["Awka I", "Awka II", "Awka III", "Nise I", "Amawbia I"],
-        "ONITSHA NORTH": ["American Quarters", "Inland Town I", "Inland Town II"],
-        "NNEWI NORTH": ["Otolo", "Uruagu", "Umudim", "Nnewichi"],
-    },
-    "Bauchi State": {
-        "BAUCHI": ["Bakari Dukku", "Daniya", "Hardawa", "Makama Sarki"],
-        "KATAGUM": ["Azare Federal", "Chinade", "Madangala"],
-        "MISAU": ["Misau Town", "Gwaram", "Hardawa"],
-        "ALKALERI": ["Alkaleri Ward", "Gwana", "Pali"],
-    },
-    "Bayelsa State": {
-        "SAGBAMA": ["Sagbama Ward 1", "Salope Ward 2", "Asamabiri Ward 3"],
-        "EKEREMOR": ["Ekeremor Ward 1", "Onyilolo Ward 2", "Ogbosuware Ward 3"],
-        "SOUTHERN IJAW": ["Oporoma Ward 1", "Amassoma Ward 5"],
-        "YENAGOA": ["Yenagoa Epie I", "Gbarain I"],
-    },
-    "Benue State": {
-        "MAKURDI": ["Central Markets", "Clergy Ward", "Fiidi", "Wadata"],
-        "GBOKO": ["Gboko Central", "Gboko East", "Yandev"],
-        "OTUKPO": ["Otukpo Town East", "Otukpo Town West", "Adoka"],
-        "VANDEIKYA": ["Vandeikya Township", "Mbaduku", "Tsambe"],
-    },
-    "Borno State": {
-        "MAIDUGURI": ["Bolori I", "Bolori II", "Shehuri North", "Shehuri South"],
-        "BIU": ["Biu Central", "Miringa", "Zarawuyaku"],
-        "JERE": ["Alau", "Bale Galtimari", "Maimusari"],
-        "GWOZA": ["Gwoza Town", "Pulka", "Ashigashiya"],
-    },
-    "Gombe State": {
-        "BILLIRI": [
-            "BAGANJE NORTH",
-            "BAGANJE SOUTH",
-            "BARE",
-            "BILLIRI NORTH",
-            "BILLIRI SOUTH",
-            "KALMAI",
-            "TAL",
-            "TANGLANG",
-            "TODI",
-            "TUDU KWAYA",
-        ],
-        "BALANGA": [
-            "BAMBAM",
-            "BANGU",
-            "DADIYA",
-            "GELENGU / BALANGA",
-            "KINDIYO",
-            "KULANI / DEGRE / SIKKAM",
-            "MWONA",
-            "NYUWAR / JESSU",
-            "SWA / REF / W. WAJA",
-            "TALASSE / DONG / REME",
-        ],
-        "GOMBE": ["Gombe East", "Gombe West", "Jekadafari", "Pantami"],
-        "AKKO": ["Akko Town", "Kumo Central", "Pindiga"],
-        "YAMALTU DEBA": ["Deba", "Zambuk", "Kano"],
-    },
-    "Delta State": {
-        "WARRI SOUTH": ["Warri GRA", "Warri Central", "Warri Pesu", "Warri Okere"],
-        "BOMADI": ["Akugbene", "Bomadi Town", "Esama"],
-        "ASABA": ["Asaba Cable", "Umuaji", "West End"],
-        "UGHELLI NORTH": ["Ughelli Urban I", "Ughelli Urban II", "Orogun I"],
-    },
-    "Ebonyi State": {
-        "ABAKALIKI": ["Azuiyiokwu", "Azuiyiator", "Abakiliki Town", "Kpirikpiri"],
-        "AFIKPO": ["Afikpo Town", "Unwana I", "Unwana II"],
-        "IZZIE": ["Izzi Urban", "Ezza Inyimagu", "Ndieze"],
-        "OHAUKWU": ["Ezzamgbo", "Effium I", "Effium II"],
-    },
-    "Edo State": {
-        "OREDO": ["Oredo I", "Oredo II", "Ikpoba Hill", "New Benin"],
-        "OVIA NORTH EAST": ["Adolor", "Ofunama", "Okada"],
-        "ESAN CENTRAL": ["Irrua Urban", "Ewu Urban", "Opoji"],
-        "ETSAKO WEST": ["Auchi Urban I", "Auchi Urban II", "Uzairue"],
-    },
-    "Ekiti State": {
-        "ADO EKITI": ["Ado I", "Ado II", "Ado III", "Okesha", "Irona"],
-        "IKERE": ["Ikere Urban", "Odo Oja", "Ogbonjana"],
-        "OMUO": ["Omuo Township", "Omuo East", "Kota"],
-        "IKOLE": ["IKole Urban", "Asin", "Odo Oro"],
-    },
-    "Enugu State": {
-        "ENUGU NORTH": ["Asata", "China Town", "Ogui New Layout"],
-        "ENUGU SOUTH": ["Awkunanaw I", "Awkunanaw II", "Uwani"],
-        "NSUKKA": ["Nsukka Urban", "Alor Uno", "Eha Alumona"],
-        "UDI": ["Udi Town", "9th Mile", "Abor"],
-    },
-    "FCT Abuja": {
-        "AMAC": ["Garki", "Wuse", "Asokoro", "Maitama", "Nyanya", "Karu"],
-        "GWAGWALADA": ["Gwagwalada Center", "Paiko", "Zuba"],
-        "BWARI": ["Bwari Central", "Kubwa", "Ushafa"],
-        "KUJE": ["Kuje Center", "Rubochi", "Gaube"],
-    },
-    "Imo State": {
-        "OWERRI MUNICIPAL": ["Owerri Urban I", "Owerri Urban II", "Aladinma"],
-        "ORLU": ["Orlu Urban", "Amaifeke", "Omuma"],
-        "OKIGWE": ["Okigwe Town", "Amuro", "Ezinachi"],
-        "MBEISE": ["Ogbe", "Ekwereazu", "Ahiara"],
-    },
-    "Jigawa State": {
-        "DUTSE": ["Dutse Gari", "Kachi", "Limawa", "Madobi"],
-        "HADEJIA": ["Hadejia Central", "Matsaro", "Sabon Garu"],
-        "KAZAURE": ["Kazaure Gari", "Ba'auzini", "Dandi"],
-        "GUMEL": ["Gumel Town", "Galgadi", "Hammado"],
-    },
-    "Kaduna State": {
-        "SOBA": [
-            "Alhazai",
-            "Danwata",
-            "Gamagira",
-            "Garkaye",
-            "Gimba",
-            "KINKIBA",
-            "Kwassallo",
-            "Maigana",
-            "Rahama",
-            "Soba",
-            "Turawa",
-        ],
-        "KADUNA NORTH": ["Dadi", "Kawo", "Gabassawa", "Unguwan Rimi"],
-        "ZARIA": ["Zaria City", "Tudun Wada", "Samaru"],
-        "KADUNA SOUTH": ["Tudun Wada West", "Barnawa", "Makera"],
-    },
-    "Kano State": {
-        "FAGGE": ["Fagge North", "Fagge South", "Kwaciri"],
-        "NASSARAWA": ["Gwagwarwa", "Kano GRA", "Tudun Murtala"],
-        "DALA": ["Dala Ward", "Gwangwazo", "Yakkaasai"],
-        "GVALE": ["Gvale Town", "Galadanchi", "Mandawari"],
-    },
-    "Katsina State": {
-        "KATSINA": ["Katsina Central", "Wakilin Kebbi", "Yamma"],
-        "FUNTUA": ["Funtua Central", "Maska", "Tudun Wada"],
-        "DAURA": ["Daura Urban", "Madoba", "Sarki"],
-        "MALUMFASHI": ["Malumfashi Town", "Yankara", "Dansarai"],
-    },
-    "Kebbi State": {
-        "BIRNIN KEBBI": ["Birnin Kebbi Central", "Nassarawa", "Gwadangaji"],
-        "ARGUNGU": ["Argungu Central", "Felande"],
-        "YURI": ["Yuri Town", "Genuwa", "Koko"],
-        "ZURU": ["Zuru Town", "Dabai", "Rikoto"],
-    },
-    "Kogi State": {
-        "LOKOJA": ["Lokoja Core", "Adankolo", "Sarki Ward"],
-        "OKENE": ["Okene Central", "Bariki", "Onyukoko"],
-        "ANYIGBA": ["Anyigba Town", "Agbeji", "Ayingba Rural"],
-        "KABBA": ["Kabba Town", "Asaya", "Okejumu"],
-    },
-    "Kwara State": {
-        "ILORIN WEST": ["Adewole", "Baboko", "Oloje", "Wara"],
-        "ILORIN EAST": ["Gambari", "Oke Oyi", "Ipata"],
-        "OFFA": ["Offa Township", "Balogun", "Essa"],
-        "OMU ARAN": ["Omu Aran Core", "Ipetu", "Arandun"],
-    },
-    "Lagos State": {
-        "ALIMOSHO": ["Egbe-Idimu", "Ipaja", "Ikotun", "Gowon Estate"],
-        "IKEJA": ["Ikeja GRA", "Anifowoshe", "Ojodu", "Oregun"],
-        "SURULERE": ["Adeniran Ogunsanya", "Ojuelegba", "Aguda", "Ijesha"],
-        "BADAGRY": ["Badagry Town", "Iworo", "Ajara"],
-    },
-    "Nasarawa State": {
-        "LAFIA": ["Lafia East", "Lafia Central", "Chiroma", "Makama"],
-        "KEFFI": ["Keffi Central", "Yelwa", "Angwan Rimi"],
-        "AKWANGA": ["Akwanga Town", "Gudi", "Mada"],
-        "KARU": ["Mararaba", "Karu Urban", "Ado", "Nyanya Boundary"],
-    },
-    "Niger State": {
-        "CHANCHAGA": ["Minna Central", "Sabon Gari", "Tunga"],
-        "BIDA": ["Bida Central", "Dokodza", "Masaga"],
-        "SULEJA": ["SULEJA Town", "Abuja Mandate", "Iku"],
-        "KONTAGORA": ["Kontagora Town", "Usman", "Central"],
-    },
-    "Ogun State": {
-        "ABEOKUTA SOUTH": ["Ake I", "Ake II", "Imo Ward", "Lafenwa"],
-        "IJEBU ODE": ["Ijebu Ode Central", "Ome Ward"],
-        "SAGAMU": ["Sagamu Central", "Sabo", "Makun"],
-        "OTA": ["Ota Urban", "Iju", "Sango"],
-    },
-    "Ondo State": {
-        "AKURE SOUTH": ["Akure Core", "Arakale", "Gbogi", "Isinkan"],
-        "ONDO WEST": ["Ondo Core", "Yaba Ward"],
-        "OWO": ["Owo Township", "Ehin Ogbe", "Igboroko"],
-        "OKITIPUPA": ["Okitipupa Town", "Ikoya", "Ilutitun"],
-    },
-    "Osun State": {
-        "OSOGBO": ["Osogbo Central", "Ataoja I", "Ataoja II", "Alekuwodo"],
-        "IFE CENTRAL": ["Ilare", "Iremo", "More Ward"],
-        "ILESHA WEST": ["Ilesha Town", "Omofe", "Ereja"],
-        "EDE SOUTH": ["Ede Town", "Babaruba", "Okejimi"],
-    },
-    "Oyo State": {
-        "IBADAN NORTH": ["Agodi", "Bodija", "Mokola", "Sabo"],
-        "OYO WEST": ["Oyo Central", "Isokun", "Opapa"],
-        "OGBOMOSO NORTH": ["Oja Igbo", "Sabon Gari", "Isale General"],
-        "ISEYIN": ["Iseyin Town", "Okeho", "Ado Awaye"],
-    },
-    "Plateau State": {
-        "JOS NORTH": ["Jos Central", "Gangare", "Tafawa Balewa"],
-        "JOS SOUTH": ["Bukuru", "Du Ward", "Gyel Ward"],
-        "PANKSHIN": ["Pankshin Town", "Wokkos", "Fier"],
-        "SHENDAM": ["Shendam Town", "Kalong", "Shimankar"],
-    },
-    "Rivers State": {
-        "PORT HARCOURT": ["PH I", "PH II", "Nkpolu Oroworukwo"],
-        "OBIO-AKPOR": ["Rumueme", "Choba", "Elelenwo"],
-        "BONNY": ["Bonny Town I", "Finima"],
-        "DEGEMA": ["Degema Urban", "Bakana"],
-    },
-    "Sokoto State": {
-        "SOKOTO NORTH": ["Sokoto Central", "Waziri Ward", "Rijiyar Zaki"],
-        "WAMAKKO": ["Wamakko Town", "Gidan Bubu"],
-        "TAMBUWAL": ["Tambuwal Town", "Dogon Daji"],
-        "GURONYO": ["Guronyo Town", "Rimawa"],
-    },
-    "Taraba State": {
-        "JALINGO": ["Jalingo Central", "Turaki Ward", "Barade Ward"],
-        "WUKARI": ["Wukari Central", "Avyi"],
-        "BALI": ["Bali Town", "Suntai"],
-        "GASHAKA": ["Serti", "Mayo Selbe"],
-    },
-    "Yobe State": {
-        "DAMATURU": ["Damaturu Central", "Maisandari", "Pawari"],
-        "POTISKUM": ["Potiskum Central", "Bolewa"],
-        "GASHUA": ["Gashua Town", "Bade"],
-        "GEIDAM": ["Geidan Town", "Asheik"],
-    },
-    "Zamfara State": {
-        "GUSAU": ["Gusau Central", "Galadima", "Mayana"],
-        "KAURA NAMODA": ["Kaura Central", "Bangana"],
-        "TFAFE": ["Tfafe Town", "Kazaure"],
-        "MARADUN": ["Maradun Town", "Dakai"],
-    },
-}
-
-PROJECT_PARTITION_ID = "BALANGA/BILLIRI_GOMBE"
-COLUMNS_STRUCTURE = [
-    "NIN",
-    "VIN",
-    "Name",
-    "LGA",
-    "Ward",
-    "Status",
-    "Category",
-    "Skill_Interest",
-    "Custom_Skill",
-    "Gender",
-    "DOB",
-    "Disability_Status",
-    "Prior_Palliative",
-    "Academic_Qual",
-    "Admission_Year",
-    "Admission_Letter",
-    "Phone",
-    "Leader_Name",
-    "Leader_Contact",
-    "Leader_NIN",
-    "Leader_LGA",
-    "Leader_Ward",
-    "Leader_Portfolio",
-    "Voucher_Code",
-    "Remarks",
-    "Timestamp",
-]
-
-OFFLINE_REGISTRY_CACHE = "offline_registry_cache.csv"
-OFFLINE_METADATA_CACHE = "offline_metadata_cache.json"
-
-
-# ==============================================================================
-# AUTOSAVE PERSISTENCE & ERROR EXTRACTION MATRIX
-# ==============================================================================
-def trigger_background_autosave():
-    try:
-        st.session_state.global_registry.to_csv(OFFLINE_REGISTRY_CACHE, index=False)
-        meta_payload = {
-            "submitted_wards": st.session_state.submitted_wards,
-            "submitted_pus": st.session_state.submitted_pus,
-        }
-        with open(OFFLINE_METADATA_CACHE, "w") as f:
-            json.dump(meta_payload, f)
-    except Exception as e:
-        st.caption(f"Autosave sync bypass: {e}")
-
-
-def initialize_and_recover_system_states():
-    if "global_registry" not in st.session_state:
-        if os.path.exists(OFFLINE_REGISTRY_CACHE):
-            try:
-                st.session_state.global_registry = pd.read_csv(OFFLINE_REGISTRY_CACHE)
-            except Exception:
-                os.remove(OFFLINE_REGISTRY_CACHE)
-
-        if "global_registry" not in st.session_state:
-            st.session_state.global_registry = pd.DataFrame(
-                [
-                    {
-                        "NIN": "23456789012",
-                        "VIN": "90FVA2345678901",
-                        "Name": "Besong Abang",
-                        "LGA": "BILLIRI",
-                        "Ward": "TURE",
-                        "Status": "Verified",
-                        "Category": "Professional",
-                        "Skill_Interest": "ICT & AI Core Programming",
-                        "Custom_Skill": "",
-                        "Gender": "Male",
-                        "DOB": "1994-04-12",
-                        "Disability_Status": "None",
-                        "Prior_Palliative": "No",
-                        "Academic_Qual": "Degree/HND",
-                        "Admission_Year": "2024",
-                        "Admission_Letter": None,
-                        "Phone": "08039999999",
-                        "Leader_Name": "Hon. Ali Isa JC",
-                        "Leader_Contact": "08038888888",
-                        "Leader_NIN": "33333333333",
-                        "Leader_LGA": "BILLIRI",
-                        "Leader_Ward": "TURE",
-                        "Leader_Portfolio": "Community Leader",
-                        "Voucher_Code": "BL01V",
-                        "Remarks": "Authentic",
-                        "Timestamp": "2026-05-15 10:00:00",
-                    },
-                    {
-                        "NIN": "87654321098",
-                        "VIN": "90FVA8765432109",
-                        "Name": "Agnes Etta",
-                        "LGA": "BALANGA",
-                        "Ward": "DADIYA",
-                        "Status": "Flagged",
-                        "Category": "Skilled Artisan",
-                        "Skill_Interest": "Solar Renewable Energy Engineering",
-                        "Custom_Skill": "",
-                        "Gender": "Female",
-                        "DOB": "1998-09-21",
-                        "Disability_Status": "None",
-                        "Prior_Palliative": "Yes",
-                        "Academic_Qual": "SSCE",
-                        "Admission_Year": "2025",
-                        "Admission_Letter": None,
-                        "Phone": "08037777777",
-                        "Leader_Name": "Chief Ogar",
-                        "Leader_Contact": "08036666666",
-                        "Leader_NIN": "44444444444",
-                        "Leader_LGA": "BALANGA",
-                        "Leader_Ward": "DADIYA",
-                        "Leader_Portfolio": "Clergy",
-                        "Voucher_Code": "BA02V",
-                        "Remarks": "Verify Biometrics",
-                        "Timestamp": "2026-05-15 11:15:22",
-                    },
-                ],
-                columns=COLUMNS_STRUCTURE,
-            )
-
-    if (
-        "submitted_wards" not in st.session_state
-        or "submitted_pus" not in st.session_state
-    ):
-        recovered_meta = False
-        if os.path.exists(OFFLINE_METADATA_CACHE):
-            try:
-                with open(OFFLINE_METADATA_CACHE, "r") as f:
-                    meta_payload = json.load(f)
-                st.session_state.submitted_wards = meta_payload.get(
-                    "submitted_wards", {}
-                )
-                st.session_state.submitted_pus = meta_payload.get("submitted_pus", {})
-                recovered_meta = True
-            except Exception:
-                os.remove(OFFLINE_METADATA_CACHE)
-
-        if not recovered_meta:
-            st.session_state.submitted_wards = {
-                "BILLIRI_TURE": "2026-05-15 08:12:04",
-                "BALANGA_DADIYA": "2026-05-15 09:45:10",
-            }
-            st.session_state.submitted_pus = {
-                "BILLIRI_TURE_PU001": """{"Presidential": 120, "Senatorial": 245, "Governorship": 190, "State_House": 210, "Timestamp": "2026-05-15 08:10:00", "Agent": "Ojong Ogar", "EC8A_Status": "Verified_PNG"}""",
-                "BALANGA_DADIYA_PU003": """{"Presidential": 95, "Senatorial": 310, "Governorship": 220, "State_House": 185, "Timestamp": "2026-05-15 09:30:15", "Agent": "Eno Takim", "EC8A_Status": "Verified_JPG"}""",
-            }
-
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = "skill_form"
-    if "radar_threat" not in st.session_state:
-        st.session_state.radar_threat = False
-    if "threat_msg" not in st.session_state:
-        st.session_state.threat_msg = ""
-    if "recycle_bin_registry" not in st.session_state:
-        st.session_state.recycle_bin_registry = None
-    if "recycle_bin_wards" not in st.session_state:
-        st.session_state.recycle_bin_wards = {}
-    if "recycle_bin_pus" not in st.session_state:
-        st.session_state.recycle_bin_pus = {}
-
-
+apply_styling()
 initialize_and_recover_system_states()
-IS_LOCAL_SANDBOX = not os.path.exists("/app/secrets.toml") and not os.path.exists(
-    ".streamlit/secrets.toml"
-)
 
-conn = None
-if not IS_LOCAL_SANDBOX:
-    try:
-        conn = st.connection("postgresql", type="sql")
-    except Exception:
-        conn = None
-
-render_language_toggle()
-
-try:
-    from modules import branding
-
-    HAS_MODULES = True
-except ImportError:
-    HAS_MODULES = False
-
-st.markdown(
-    """
-    <style>
-    .printable-slip-box { 
-        background-color: #FFFFFF !important; 
-        color: #000000 !important; 
-        padding: 25px; 
-        border: 3px double #8B0000; 
-        border-radius: 4px; 
-        font-family: 'Courier New', Courier, monospace; 
-        margin-top: 15px; 
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <style>
-    [data-testid="stSidebar"] { 
-        background-color: #030f21 !important; 
-        border-right: 4px solid #8B0000 !important;
-    }
-    
-    .admin-launch-zone {
-        border: 2px dashed #00E5FF; padding: 15px; border-radius: 14px;
-        background-color: rgba(0, 229, 255, 0.08); margin-bottom: 15px;
-    }
-    
-    .inst-link-box {
-        display: block; background: linear-gradient(90deg, #8B0000 0%, #4A0000 100%) !important;
-        color: #FFFFFF !important; padding: 12px; border-radius: 10px; 
-        text-align: center; font-weight: 900; margin-bottom: 10px; text-decoration: none;
-        font-size: 14px; letter-spacing: 1px; text-transform: uppercase;
-    }
-    
-    .stButton>button { 
-        width: 100% !important; height: 48px !important; font-weight: 800 !important; 
-        font-size: 14px !important; margin-bottom: 10px !important; border: 2px solid #8B0000 !important;
-        border-radius: 10px !important; color: #FFFFFF !important; transition: all 0.3s ease;
-        text-transform: uppercase; letter-spacing: 1px;
-    }
-    
-    button[key="btn_skill"] { background: linear-gradient(90deg, #00B4DB 0%, #0083B0 100%) !important; }
-    button[key="btn_sch"] { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%) !important; }
-    button[key="btn_pal"] { background: linear-gradient(90deg, #2e8b57 0%, #38ef7d 100%) !important; }
-    button[key="btn_cv"] { background: linear-gradient(90deg, #8E2DE2 0%, #4A00E0 100%) !important; }
-    button[key="btn_cmd"] { background: #0b1e36 !important; border: 2px solid #00E5FF !important; }
-
-    @keyframes master_chroma_flow {
-        0% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
-        50% { border-color: #00E5FF; box-shadow: 0 0 45px rgba(0, 229, 255, 0.9); background-position: 100% 50%; }
-        100% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
-    }
-
-    @keyframes radar_flash {
-        0% { background-color: #FF0000; color: #FFFFFF; box-shadow: 0 0 20px #FF0000; }
-        50% { background-color: #330000; color: #FF0000; box-shadow: 0 0 0px #000000; }
-        100% { background-color: #FF0000; color: #FFFFFF; box-shadow: 0 0 20px #FF0000; }
-    }
-
-    /* ENLARGED EXTRA-DIMENSION ANIMATED HIGH-AESTHETIC PORTAL CONTAINER */
-    .unified-command-vault {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-        height: 330px !important; 
-        background: linear-gradient(-45deg, #04142c, #0b264f, #020a17, #071e3d) !important;
-        background-size: 400% 400% !important;
-        border: 5px solid #FFD700 !important;
-        animation: master_chroma_flow 6s infinite ease-in-out !important;
-        padding: 0px !important; 
-        border-radius: 24px !important;
-        backdrop-filter: blur(35px) !important;
-        -webkit-backdrop-filter: blur(35px) !important;
-        margin-top: 5px !important;
-        box-shadow: inset 0 0 50px rgba(255, 215, 0, 0.35), 0 20px 45px rgba(0, 0, 0, 0.65) !important;
-        overflow: hidden !important;
-        transition: all 0.5s ease-in-out;
-    }
-
-    /* ENLARGED COMPONENT CONTAINER CELLS */
-    .mace-vault-shield {
-        flex-shrink: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 310px !important; 
-        height: 100% !important; 
-        background: rgba(4, 20, 48, 0.7) !important; 
-        overflow: hidden !important;
-        border-right: 3px solid rgba(255, 215, 0, 0.3);
-    }
-
-    .mace-vault-shield img {
-        height: 90% !important; 
-        width: 90% !important; 
-        object-fit: contain !important; 
-        filter: drop-shadow(0px 0px 20px rgba(255, 215, 0, 0.85)) contrast(1.4) brightness(1.1);
-    }
-
-    .photo-vault-shield {
-        flex-shrink: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 450px !important; 
-        height: 100% !important; 
-        background: rgba(2, 10, 23, 0.5) !important; 
-        overflow: hidden !important;
-        border-left: 3px solid rgba(0, 229, 255, 0.3);
-    }
-
-    .photo-vault-shield img {
-        height: 100% !important;
-        width: 100% !important; 
-        object-fit: cover !important; 
-        filter: contrast(1.3) brightness(1.05) drop-shadow(-10px 0px 25px rgba(0,0,0,0.8));
-    }
-
-    .vault-text-block {
-        flex-grow: 2 !important;
-        text-align: center !important;
-        padding: 0 20px !important;
-    }
-
-    /* INTEGRATED FORCEFUL TYPOGRAPHY REDUCTION FOR VISUAL AUTHENTICITY */
-    .vault-text-block h1 {
-        color: #FFFF00 !important;
-        margin: 0 !important;
-        font-size: 1.95rem !important; /* Forcefully scaled down from 2.8rem to guarantee container clearance */
-        font-weight: 950 !important;
-        letter-spacing: 1.5px !important;
-        text-transform: uppercase !important;
-        text-shadow: 2px 2px 6px #000000, 0 0 15px rgba(255,255,0,0.3) !important;
-        line-height: 1.2 !important;
-    }
-
-    .vault-text-block .sub-title {
-        color: #FFFFFF !important;
-        margin: 6px 0 0 0 !important;
-        font-size: 1.05rem !important; /* Scaled down from 1.4rem to prevent column blowout */
-        font-weight: 800 !important;
-        letter-spacing: 1px !important;
-        text-transform: uppercase !important;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8) !important;
-        line-height: 1.2 !important;
-    }
-
-    .vault-text-block .geo-stamp {
-        color: #00E5FF !important;
-        margin: 6px 0 0 0 !important;
-        font-size: 1.25rem !important; /* Kept prominent but highly tracked to prevent container overspill */
-        font-weight: 900 !important;
-        letter-spacing: 2px !important;
-        text-transform: uppercase !important;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
-        display: block !important;
-    }
-
-    .mobile-return-banner {
-        display: none; background: linear-gradient(90deg, #0b1e36 0%, #05101e 100%);
-        border: 2px solid #00E5FF; padding: 12px; border-radius: 8px; text-align: center;
-        margin-bottom: 15px; cursor: pointer; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;
-    }
-
-    @media (max-width: 1024px) {
-        .unified-command-vault { flex-direction: column !important; height: auto !important; padding: 30px 10px !important; gap: 20px !important; }
-        .mace-vault-shield { width: 100% !important; height: 200px !important; border-right: none; border-bottom: 3px solid rgba(255, 215, 0, 0.3); }
-        .photo-vault-shield { width: 100% !important; height: 260px !important; border-left: none; border-top: 3px solid rgba(0, 229, 255, 0.3); }
-        .vault-text-block h1 { font-size: 1.9rem !important; line-height: 1.2 !important; }
-        .vault-text-block .sub-title { font-size: 1.05rem !important; }
-        .vault-text-block .geo-stamp { font-size: 1.15rem !important; }
-        .mobile-return-banner { display: block !important; }
-    }
-
-    .supervisor-header {
-        background-color: #B71C1C;
-        color: #FFFFFF !important;
-        padding: 6px;
-        border-radius: 8px;
-        text-align: center; font-weight: 900; 
-        display: block; width: 100%; font-size: 15px;
-        margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase;
-    }
-    .radar-sticky-threat {
-        animation: radar_flash 0.5s infinite; padding: 15px; border-radius: 8px; border: 3px solid #FFFFFF;
-        text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 15px;
-    }
-    .tier-box { display: inline-block; padding: 10px 20px; margin: 5px; border-radius: 6px; font-weight: bold; color: white; text-align: center; border: 2px solid #FFFFFF; }
-    .tier-box.tier-pres { background-color: #FF4B4B !important; }
-    .tier-box.tier-sen { background-color: #1F77B4 !important; }
-    .tier-box.tier-rep { background-color: #2CA02C !important; }
-    .tier-box.tier-gov { background-color: #9467BD !important; }
-    .tier-box.tier-house { background-color: #FF7F0E !important; }
-    
-    .slip-header { text-align: center; font-weight: 900; font-size: 16px; margin-bottom: 15px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-    .slip-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: bold; }
-    
-    .stTextInput label p { color: #00E5FF !important; font-weight: 700 !important; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-st.title(current["title"])
 # ==============================================================================
-# UNIFIED STRATEGIC AUTHORIZATION INTERFACE ROUTER MATRIX
+# DATABASE CONNECTION
+# ==============================================================================
+
+# Initialize connection.
+# conn = st.connection("supabase", type=SupabaseConnection)
+conn = None  # Mock connection
+
+# ==============================================================================
+# PAGE ROUTING
 # ==============================================================================
 if "current_page" not in st.session_state:
     st.session_state.current_page = "skill_form"
 
 if st.session_state.get("adm_v30_auth") == "ali 2027":
     st.session_state.current_page = "main_dashboard"
-elif st.session_state.get("co_v30_auth_sidebar") == "ali 2027":
-    st.session_state.current_page = "collation_officer_panel"
+elif st.session_state.get("sup_v30_auth_sidebar") == "ali 2027":
+    st.session_state.current_page = "supervisor_panel"
 elif st.session_state.get("agt_v30_auth_sidebar") == "ali 2027":
     st.session_state.current_page = "agent_panel"
 
 # ==============================================================================
-# SIDEBAR NAVIGATION INTERFACE CONTROL MATRIX
+# SIDEBAR
 # ==============================================================================
 with st.sidebar:
     if st.session_state.radar_threat:
         st.markdown(
-            f"""<div class="radar-sticky-threat">🚨 SECURITY WARNING: IDENTITY DUPLICATION COLLISION<br>{st.session_state.threat_msg}</div>""",
+            f'<div class="radar-sticky-threat">🚨 SECURITY WARNING: IDENTITY DUPLICATION COLLISION<br>{st.session_state.threat_msg}</div>',
             unsafe_allow_html=True,
         )
 
-    st.markdown("""<div class="admin-launch-zone">""", unsafe_allow_html=True)
-    adm_key = st.text_input(
-        current["command_hub_key"], type="password", key="adm_v30_auth"
-    )
+    st.markdown('<div class="admin-launch-zone">', unsafe_allow_html=True)
+    adm_key = st.text_input("COMMAND HUB KEY", type="password", key="adm_v30_auth")
     st.markdown(
-        f"""<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" class="inst-link-box">🌐 {current["official_facebook"]}</a>""",
+        '<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" class="inst-link-box">🌐 Hon. Ali Isa JC Official Facebook</a>',
         unsafe_allow_html=True,
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.divider()
 
-    if st.button(current["skill_vocation_pool"], key="btn_skill"):
+    if st.button("🛠️ SKILL VOCATION POOL", key="btn_skill"):
         st.session_state.current_page = "skill_form"
-    if st.button(current["student_scholarship"], key="btn_sch"):
+    if st.button("🎓 STUDENT SCHOLARSHIP/GRANT", key="btn_sch"):
         st.session_state.current_page = "scholarship_form"
-    if st.button(current["palliative_enrollment"], key="btn_pal"):
+    if st.button("📦 CONSTITUENT PALLIATIVE ENROLLMENT", key="btn_pal"):
         st.session_state.current_page = "palliative_gateway"
-    if st.button(current["cv_vault"], key="btn_cv"):
+    if st.button("🚀 CV & ARTISAN VAULT", key="btn_cv"):
         st.session_state.current_page = "cv_vault"
 
     st.markdown(
-        f"""<div class="sidebar-red-flash">🚨 {current["community_urgent_need"]}</div>""",
+        '<div class="sidebar-red-flash">🚨 COMMUNITY URGENT NEED</div>',
         unsafe_allow_html=True,
     )
-    if st.button(current["trigger_registration"], key="btn_cun_redirect"):
+    if st.button("TRIGGER REGISTRATION INTERFACE", key="btn_cun_redirect"):
         st.session_state.current_page = "cun_trigger"
+
+    if st.sidebar.button("Activate Prestige Aura"):
+        render_mace_flash("assets/mace.png")
 
     st.divider()
     st.divider()
     st.markdown(
-        f"<p style='color:#8B0000; font-weight:bold; text-transform: uppercase;'>🔒 {current['field_auth_core']}</p>",
+        "<p style='color:#8B0000; font-weight:bold; text-transform: uppercase;'>🔒 Field Authentication Core</p>",
         unsafe_allow_html=True,
     )
 
-    co_key_input = st.text_input(
-        current["collation_officer_key"], type="password", key="co_v30_auth_sidebar"
+    sup_key_input = st.text_input(
+        "WARD SUPERVISOR KEY", type="password", key="sup_v30_auth_sidebar"
     )
     agt_key_input = st.text_input(
-        current["polling_unit_agent_key"], type="password", key="agt_v30_auth_sidebar"
+        "POLLING UNIT AGENT KEY", type="password", key="agt_v30_auth_sidebar"
     )
 
-    if co_key_input:
+    if sup_key_input:
         st.text_area(
-            current["collation_officer_remarks"],
-            key="co_remarks",
+            "Supervisor Remarks/Field Observations",
+            key="sup_remarks",
             placeholder="Field log entry space...",
         )
     if agt_key_input:
         st.text_area(
-            current["agent_remarks"],
+            "Agent Remarks/Field Observations",
             key="agt_remarks",
             placeholder="Unit log entry space...",
         )
 
-    st.caption(f"Engine: v35.0.0-BILLIRI-BALANGA | {datetime.date.today()}")
-
-
-# ==============================================================================
-# INTEGRATED HEADER OBJECTS BUILD ZONE (PIXEL PERFECT FLUSH & TEXTURE CONTROL)
-# ==============================================================================
-def render_marquee_header():
-    mace_path = os.path.join("assets", "digital_mace.png")
-    portrait_path = os.path.join("assets", "hon_ali.png")
-
-    mace_base64 = image_to_base64(mace_path)
-    portrait_base64 = image_to_base64(portrait_path)
-
-    mace_html = (
-        f"""<img src="data:image/png;base64,{mace_base64}">"""
-        if mace_base64
-        else "<p>Mace image not found</p>"
-    )
-    portrait_html = (
-        f"""<img src="data:image/png;base64,{portrait_base64}">"""
-        if portrait_base64
-        else "<p>Portrait not found. Please upload 'hon_ali.png' to the 'assets' folder.</p>"
-    )
-
-    st.markdown(
-        f"""
-        <div class="unified-command-vault">
-            <div class="mace-vault-shield">
-                {mace_html}
-            </div>
-            <div class="vault-text-block">
-                <h1>{current["header_title"]}</h1>
-                <div class="sub-title">{current["header_subtitle"]}</div>
-                <div class="geo-stamp">{current["header_geo_stamp"]}</div>
-            </div>
-            <div class="photo-vault-shield">
-                {portrait_html}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""<div style="margin-top:15px; background:linear-gradient(180deg, #061a33 0%, #020b17 100%); padding:8px; border-radius:8px;">"""
-        f"""  <marquee scrollamount="4" style="color:#FFFFFF; font-weight:800; font-size:16px; letter-spacing:1.5px; font-family:sans-serif;">"""
-        f"""    {current["marquee_text"]}"""
-        "  </marquee>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-def render_module_download_trigger(data_source, filename_prefix, unique_key):
-    try:
-        csv_bytes = pd.DataFrame(data_source).to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 DOWNLOAD SYSTEM LOG EXPORT",
-            data=csv_bytes,
-            file_name=f"{filename_prefix}_{datetime.date.today()}.csv",
-            mime="text/csv",
-            key=f"dl_btn_{unique_key}",
-        )
-    except Exception as e:
-        st.caption(f"Download entry failure: {e}")
-
-
-def render_institutional_purge_engine(key_suffix):
-    st.markdown("---")
-    st.subheader("🚨 Institutional Data Purge Zone")
-    confirm_purge = st.text_input(
-        "Type 'PURGE SYSTEM DATA' to authorize reset:", key=f"purge_box_{key_suffix}"
-    )
-    if st.button(
-        "💥 EXECUTE SYSTEM PURGE afresh", type="primary", key=f"purge_btn_{key_suffix}"
-    ):
-        if confirm_purge == "PURGE SYSTEM DATA":
-            st.session_state.global_registry = pd.DataFrame(columns=COLUMNS_STRUCTURE)
-            st.session_state.submitted_wards = {}
-            st.session_state.submitted_pus = {}
-            trigger_background_autosave()
-            st.success("System tracking layers reset completely.")
-            st.sidebar.rerun()
-
-
-def render_polling_unit_portal():
-    st.subheader("POLLING UNIT AGENT FIELD DATA")
-
-    with st.form("agent_form"):
-        pu_id = st.text_input("Polling Unit ID")
-        bvas_serial = st.text_input("BVAS Serial Number (Reference Only)")
-
-        is_incident = st.checkbox("Report Incident / BVAS Absence")
-        details = st.text_area("Incident Details") if is_incident else "N/A"
-
-        tier = st.multiselect(
-            "Tiers Audited",
-            [
-                "Federal",
-                "Senatorial",
-                "Presidential",
-                "Governorship",
-                "State House",
-            ],
-        )
-
-        if st.form_submit_button("Submit to War Room Sync"):
-            engine.record_field_data(
-                pu_id, bvas_serial, is_incident, details, ", ".join(tier)
-            )
-            st.success("Data successfully synced to War Room.")
-
-
-@st.fragment(run_every=5.0)
-def render_live_sync_array(tier_filter):
-    # Fetch data from your database based on the selected tier
-    # Replace this with your actual database query (e.g., sqlalchemy/st.connection)
-    df = engine.fetch_latest_results_from_db(tier=tier_filter)
-
-    st.subheader(f"Live Sync: {tier_filter} Tier")
-    st.dataframe(df, use_container_width=True)
-    st.caption(f"Last sync: {pd.Timestamp.now().strftime('%H:%M:%S')}")
-
-
-def render_war_room_dashboard():
-    st.subheader("Cross-National Multi-Tier Election Verification War Room Sync Arrays")
-
-    tier = st.selectbox("Select Tier", ["Presidential", "Senatorial", "Federal House"])
-    render_live_sync_array(tier)
-
-    df = st.session_state.war_room_sync
-
-    # Visual Logic: Highlight incidents in the array
-    st.dataframe(
-        df.style.map(
-            lambda x: "background-color: #8B0000; color: white" if x == True else "",
-            subset=["incident_status"],
-        ),
-        use_container_width=True,
-    )
-
+    st.caption(f"Engine: v34.0.73-BILLIRI-BALANGA | {datetime.date.today()}")
 
 # ==============================================================================
-# MASTER APPLICATION CORE ROUTING LAYER
+# PAGE RENDERING
 # ==============================================================================
-
-if st.session_state.current_page == "collation_officer_panel":
-    render_marquee_header()
-    st.markdown(
-        f"""<div class="supervisor-header">🛡️ {current['collation_officer_command_title']}</div>""",
-        unsafe_allow_html=True,
-    )
-    if "co_slip_preview" not in st.session_state:
-        st.session_state.co_slip_preview = None
-
-    with st.form("collation_officer_form"):
-        c1, c2 = st.columns(2)
-        with c1:
-            co_name = st.text_input(current["collation_officer_full_name"])
-            co_phone = st.text_input(current["phone_number"])
-            co_state = st.text_input(current["state_link_node"], value="GOMBE STATE")
-            co_lga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
-            co_ward = st.selectbox(current["your_ward"], LGA_WARD_DATA.get(co_lga, []))
-            co_unit = st.text_input(current["ward_unit_tracking_code"])
-
-        ward_id = f"{co_lga}_{co_ward}".replace(" ", "_").upper()
-
-        with c2:
-            tiers_selected = st.multiselect(
-                current["active_scope_assessment"],
-                [
-                    "Federal House",
-                    "Senatorial",
-                    "Presidential",
-                    "Governorship Aspirant",
-                    "State House of Assembly",
-                ],
-                default=["Federal House"],
-            )
-
-            if tiers_selected:
-                st.markdown(
-                    """
-                **Tiers Audited Vector Checkbox Mapping:**<br>
-                <div class="tier-box tier-rep">Federal House</div><div class="tier-box tier-sen">Senatorial</div><div class="tier-box tier-pres">Presidential</div><div class="tier-box tier-gov">Governorship</div><div class="tier-box tier-house">State House</div>
-                """,
-                    unsafe_allow_html=True,
-                )
-
-            st.number_input(
-                current["highest_party_vote"], min_value=0, key="co_high_vote"
-            )
-            st.number_input(
-                current["principal_votes_cast"], min_value=0, key="co_pr_vote"
-            )
-            st.file_uploader(
-                current["upload_nin_slip"],
-                type=["pdf", "jpg", "png"],
-            )
-
-        st.camera_input(current["live_capture_ec8a"])
-
-        if st.form_submit_button(current["generate_preview_slip"]):
-            if not co_name or not co_phone or not co_unit:
-                st.error(
-                    "🛑 FORM ERROR: All core collation officer tracking strings must be completely specified before submission execution."
-                )
-            else:
-                st.session_state.co_slip_preview = {
-                    "Collation Officer": co_name,
-                    "Phone": co_phone,
-                    "LGA": co_lga,
-                    "Ward": co_ward,
-                    "Unit": co_unit,
-                    "Tiers": ", ".join(tiers_selected),
-                    "High_Vote": int(st.session_state.get("co_high_vote", 0)),
-                    "Principal_Votes": int(st.session_state.get("co_pr_vote", 0)),
-                    "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
-
-    if st.session_state.co_slip_preview is not None:
-        p_data = st.session_state.co_slip_preview
-        st.markdown(
-            f"""
-        <div class="printable-slip-box">
-            <div class="slip-header">🏛️ LSOEP NATIONAL ASSEMBLY INTEGRITY RECEIPT OVERVIEW</div>
-            <div class="slip-row"><span>TIMESTAMP DATA:</span> <span>{p_data['Timestamp']}</span></div>
-            <div class="slip-row"><span>COLLATION OFFICER NAME:</span> <span>{p_data['Collation Officer']}</span></div>
-            <div class="slip-row"><span>PHONE INTERFACE:</span> <span>{p_data['Phone']}</span></div>
-            <div class="slip-row"><span>YOUR LGA:</span> <span>{p_data['LGA']}</span></div>
-            <div class="slip-row"><span>YOUR WARD:</span> <span>{p_data['Ward']}</span></div>
-            <div class="slip-row"><span>UNIT IDENTIFIER:</span> <span>{p_data['Unit']}</span></div>
-            <div class="slip-row"><span>ACTIVE TIERS:</span> <span>{p_data['Tiers']}</span></div>
-            <div class="slip-row"><span>HIGHEST TOTAL:</span> <span>{p_data['High_Vote']:}</span></div>
-            <div class="slip-row"><span>VALID CORE SUM:</span> <span>{p_data['Principal_Votes']:}</span></div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-        col_v1, col_v2 = st.columns(2)
-        with col_v1:
-            if st.button(current["confirm_and_log"]):
-                if ward_id in st.session_state.submitted_wards:
-                    st.error(
-                        "🛑 Results sheet indicators for this Ward coordinate set have already been locked."
-                    )
-                else:
-                    st.session_state.submitted_wards[ward_id] = p_data["Timestamp"]
-                    trigger_background_autosave()
-                    st.session_state.co_slip_preview = None
-                    st.success("Thanks for your submission! You are appreciated.")
-                    st.balloons()
-                    time.sleep(1)
-                    st.rerun()
-        with col_v2:
-            if st.button(current["abort_transaction"]):
-                st.session_state.co_slip_preview = None
-                st.warning("Preview storage wiped successfully.")
-                st.rerun()
-
+if st.session_state.current_page == "supervisor_panel":
+    supervisor_panel()
 elif st.session_state.current_page == "agent_panel":
-    render_marquee_header()
-    render_polling_unit_portal()
-
+    agent_panel()
 elif st.session_state.current_page == "main_dashboard":
-    render_marquee_header()
-    st.markdown("## 🏛️ EXECUTIVE CONTROL COMMAND DASHBOARD PORTAL ARRAY")
-
-    tabs = st.tabs(
-        [
-            "📊 Master Registry Matrix",
-            "📈 Infrastructure CUN Matrix",
-            "⚖️ Database Audit Diagnostics",
-            "🛡️ RADAR Deduplication Interceptor",
-            "🎓 Scholar Talent Matrix",
-            "💎 Vantedge Influencer Proportions",
-            "🗳️ Live Election Analytical Sync",
-            "📝 Ground Truth Form EC8A Data",
-            "📂 Bulk Data Sync Stream",
-            "📜 Executive Waiver Ledger",
-            "🚀 Legislative Progress Tracker",
-            "📅 Long-Term Momentum Monitoring",
-        ]
-    )
-
-    billiri_balanga_index_metrics_mock = pd.DataFrame(
-        {
-            "Constituency Node": ["BILLIRI/BALANGA FEDERAL CONSTITUENCY"],
-            "Performance Index Score": [88.2],
-            "CUN Deficit Rate Proportion": [19.8],
-            "Voter Turnout Metric Density": [81.3],
-            "Waivers Distributed Yield": [25],
-        }
-    ).set_index("Constituency Node")
-
-    with tabs[0]:
-        st.subheader("📊 Master Verification Registry Database Partition Array")
-        mc1, mc2 = st.columns([1, 2])
-        with mc1:
-            st.markdown("**Active Intake Status Partition Trace Records**")
-            st.dataframe(
-                st.session_state.global_registry[["Name", "LGA", "Ward", "Status"]]
-            )
-        with mc2:
-            st.markdown(
-                "**Processing Stream Success Metrics Vector Chart Across Billiri/Balanga Constituency**"
-            )
-            st.bar_chart(billiri_balanga_index_metrics_mock["Performance Index Score"])
-        st.dataframe(st.session_state.global_registry, width="stretch")
-        render_module_download_trigger(
-            st.session_state.global_registry, "Master_Registry_Log", "t1_dl"
-        )
-        render_institutional_purge_engine("t1_purge")
-
-    with tabs[1]:
-        st.subheader("📈 Regional Community Urgent Need Matrix Framework Indicators")
-        cun_records_array = []
-        all_wards = GEOGRAPHY["Billiri LGA"] + GEOGRAPHY["Balanga LGA"]
-        for index_node, ward_string_name in enumerate(all_wards):
-            lga_name = (
-                "BILLIRI" if ward_string_name in GEOGRAPHY["Billiri LGA"] else "BALANGA"
-            )
-            cun_records_array.append(
-                {
-                    "LGA Territory Identification Link": f"{lga_name} CONST AREA",
-                    "Administrative Ward Boundary Target": ward_string_name.upper(),
-                    "Water Infrastructure Asset Deficit Ratio %": 44
-                    + (index_node * 4) % 15,
-                    "Grid Energy Power Interruption Density %": 88
-                    - (index_node * 3) % 12,
-                    "Critical Access Road Shortage Weights %": 71
-                    + (index_node * 5) % 16,
-                    "Logged Internal Community Security Threats Metrics": 11
-                    + (index_node * 2) % 9,
-                }
-            )
-        df_cun_matrix_canvas = pd.DataFrame(cun_records_array)
-        st.dataframe(df_cun_matrix_canvas, width="stretch")
-        st.bar_chart(
-            df_cun_matrix_canvas.set_index("Administrative Ward Boundary Target")[
-                [
-                    "Water Infrastructure Asset Deficit Ratio %",
-                    "Grid Energy Power Interruption Density %",
-                ]
-            ]
-        )
-        render_module_download_trigger(
-            df_cun_matrix_canvas, "CUN_Deficit_Matrix_Log", "t2_dl"
-        )
-        render_institutional_purge_engine("t2_purge")
-
-    with tabs[2]:
-        st.subheader("⚖️ Forensic Audit Database Query & Connection Diagnostic Stream")
-        st.error(
-            "⚠️ Isolation Warning Layer: Supabase API Cloud Gateway locked inside internal local execution container frames."
-        )
-
-        if conn is not None:
-            try:
-                df_db_direct_test = conn.query(
-                    f"SELECT * FROM ward_returns WHERE project_partition = '{PROJECT_PARTITION_ID}' LIMIT 5;",
-                    ttl="0m",
-                )
-                st.success(
-                    "Operational link established cleanly with relational query tables vector pools."
-                )
-                st.dataframe(df_db_direct_test)
-            except Exception as e:
-                st.caption(
-                    f"Connection framework bypassed intentionally to run local backup cache: {e}"
-                )
-
-        with st.expander(
-            "🛠️ Expose Active Developer State Cache JSON Mapping Trees", expanded=False
-        ):
-            st.json(
-                {
-                    "Memory_State_Allocation_Tokens": [
-                        "agt_v30_auth_sidebar",
-                        "btn_cv",
-                        "purge_box_t2_purge",
-                        "btn_pal",
-                        "btn_cun_redirect",
-                        "purge_box_t1_purge",
-                        "adm_v30_auth",
-                        "btn_sch",
-                        "purge_btn_t2_purge",
-                        "global_registry",
-                        "FormSubmitter:skill_form_engine-🚀 COMMIT APPLICATION TO TRAINING POOLS",
-                        "submitted_pus",
-                        "submitted_wards",
-                        "purge_btn_t1_purge",
-                        "dl_btn_t2_dl",
-                        "radar_threat",
-                        "threat_msg",
-                        "recycle_bin_pus",
-                        "btn_cmd",
-                        "recycle_bin_wards",
-                        "co_v30_auth_sidebar",
-                        "btn_skill",
-                        "recycle_bin_registry",
-                        "dl_btn_t1_dl",
-                        "current_page",
-                    ],
-                    "Sandbox_Static_Override_Circuit": "ACTIVE LOCAL BACKUP CONTAINER",
-                    "Internal_Target_Matrix_Stencil": PROJECT_PARTITION_ID,
-                    "Current_System_Clock_Time": "2026-05-25 21:20:50.370383",
-                }
-            )
-        render_institutional_purge_engine("t3_purge")
-
-    with tabs[3]:
-        st.subheader(
-            "🛡️ RADAR Multi-Intake Anti-Fraud Deduplication Interceptor Shield"
-        )
-        radar_records_array = []
-        all_wards = GEOGRAPHY["Billiri LGA"] + GEOGRAPHY["Balanga LGA"]
-        for index_node, ward_string_name in enumerate(all_wards):
-            lga_name = (
-                "BILLIRI" if ward_string_name in GEOGRAPHY["Billiri LGA"] else "BALANGA"
-            )
-            radar_records_array.append(
-                {
-                    "LGA Territory Identification Link": f"{lga_name} CONST AREA",
-                    "Administrative Ward Boundary Target": ward_string_name.upper(),
-                    "Cross-Verification Biometric Pass Confidence %": 99.1
-                    - (index_node * 0.12),
-                    "Intercepted Duplication Collision Anomalies Tracked": index_node
-                    % 2,
-                    "Multi-Voucher System Fraud Attempts Dropped": index_node % 3,
-                }
-            )
-        df_radar_matrix_canvas = pd.DataFrame(radar_records_array)
-        st.dataframe(df_radar_matrix_canvas, width="stretch")
-        st.metric(
-            "Total Duplicate Fraud Collisions Terminated Safely",
-            "0 Active Threat Logs Confirmed",
-        )
-
-        if st.button("Send Global System Clear Code To Sidebar Threat Indicators"):
-            st.session_state.radar_threat = False
-            st.session_state.threat_msg = ""
-            st.success("Threat verification clear signals dispatched smoothly.")
-            st.rerun()
-        render_module_download_trigger(
-            df_radar_matrix_canvas, "Radar_Deduplication_Logs", "t4_dl"
-        )
-        render_institutional_purge_engine("t4_purge")
-
-    with tabs[4]:
-        st.subheader("🎓 Academic Grants Distribution Pools & Talent Demographics Hub")
-        cv_records_array = []
-        all_wards = GEOGRAPHY["Billiri LGA"] + GEOGRAPHY["Balanga LGA"]
-        for index_node, ward_string_name in enumerate(all_wards):
-            lga_name = (
-                "BILLIRI" if ward_string_name in GEOGRAPHY["Billiri LGA"] else "BALANGA"
-            )
-            cv_records_array.append(
-                {
-                    "LGA Territory Identification Link": f"{lga_name} CONST AREA",
-                    "Administrative Ward Boundary Target": ward_string_name.upper(),
-                    "PhD High-Fidelity Research Candidates Enrolled": index_node % 2,
-                    "Masters Level Profiles Captured": 1 + (index_node % 3),
-                    "Bachelors Degree Holders Indexed": 15 + (index_node * 2),
-                    "Technical Vocation Artisans Tracked": 30 + (index_node * 4),
-                }
-            )
-        df_cv_matrix_canvas = pd.DataFrame(cv_records_array)
-        st.dataframe(df_cv_matrix_canvas, width="stretch")
-        st.bar_chart(
-            df_cv_matrix_canvas.set_index("Administrative Ward Boundary Target")[
-                [
-                    "Bachelors Degree Holders Indexed",
-                    "Technical Vocation Artisans Tracked",
-                ]
-            ]
-        )
-        render_module_download_trigger(
-            df_cv_matrix_canvas, "Talent_Pool_Demographics", "t5_dl"
-        )
-        render_institutional_purge_engine("t5_purge")
-
-    with tabs[5]:
-        st.subheader("💎 Vantedge Strategic Influence Vectors & Demographics Scale")
-        vantage_records_array = []
-        all_wards = GEOGRAPHY["Billiri LGA"] + GEOGRAPHY["Balanga LGA"]
-        for index_node, ward_string_name in enumerate(all_wards):
-            lga_name = (
-                "BILLIRI" if ward_string_name in GEOGRAPHY["Billiri LGA"] else "BALANGA"
-            )
-            vantage_records_array.append(
-                {
-                    "LGA Territory Identification Link": f"{lga_name} CONST AREA",
-                    "Administrative Ward Boundary Target": ward_string_name.upper(),
-                    "Opinion Influencers Authenticated": 3 + (index_node % 4),
-                    "Youth Mobilization Mobilization Directors": 6 + (index_node % 5),
-                    "Community Vouched Elders Registered": 4 + (index_node % 6),
-                    "Regional Strategic Weight Matrix Allocation Coefficient": round(
-                        1.15 + (index_node * 0.04), 2
-                    ),
-                }
-            )
-        df_vantage_matrix_canvas = pd.DataFrame(vantage_records_array)
-        st.dataframe(df_vantage_matrix_canvas, width="stretch")
-        render_module_download_trigger(
-            df_vantage_matrix_canvas, "Vantedge_Influence_Matrix_Log", "t6_dl"
-        )
-        render_institutional_purge_engine("t6_purge")
-
-    with tabs[6]:
-        render_war_room_dashboard()
-        render_institutional_purge_engine("t7_purge")
-
-    with tabs[7]:
-        st.subheader("📝 Ground Truth Form EC8A Audited Verification Schema")
-        target_state_ec8a = st.selectbox(
-            "Select State Target Matrix Boundary Node",
-            list(STATE_DATA_LEDGER.keys()),
-            key="ec8a_master_state_select",
-        )
-        state_lga_map = STATE_DATA_LEDGER.get(target_state_ec8a, {})
-        lga_options = (
-            list(state_lga_map.keys())
-            if state_lga_map
-            else ["NO COMPATIBLE LGA KEY DETECTED"]
-        )
-        selected_lga_ec8a = st.selectbox(
-            f"Select LGA Sub-partition for {target_state_ec8a}",
-            lga_options,
-            key="ec8a_lga_select",
-        )
-        ward_options = state_lga_map.get(selected_lga_ec8a, ["CENTRAL WARD 1"])
-        selected_ward_ec8a = st.selectbox(
-            f"Select Ward Boundary for {selected_lga_ec8a}",
-            ward_options,
-            key="ec8a_ward_select",
-        )
-
-        if st.button("Run Real-Time Verification Document Audit Transfer"):
-            st.info(
-                f"Establishing verification tracking streams with {target_state_ec8a} repositories..."
-            )
-            ec8a_records = []
-            for item_node in range(1, 6):
-                ec8a_records.append(
-                    {
-                        "State Link Mapped": target_state_ec8a,
-                        "LGA Node Mapping": selected_lga_ec8a.upper(),
-                        "Ward Sector Mapped": selected_ward_ec8a.upper(),
-                        "Polling Unit Code Identification Link": f"{selected_ward_ec8a[:3].upper()}-WARD-PU00{item_node}",
-                        "EC8A Image Link Validation Checksum": f"BLOB_IMG_ID_0{item_node}_SECURE.PNG",
-                        "Cryptographic SHA-256 Stamp Metric": f"0xSHA256_{item_node}B99A11FF_{selected_lga_ec8a[:3].upper() if len(selected_lga_ec8a) >=3 else 'LGA'}",
-                        "Audited Discrepancy Margin Rate": "0.00% Match Perfect",
-                    }
-                )
-            st.session_state.last_ec8a_df = pd.DataFrame(ec8a_records)
-            st.dataframe(st.session_state.last_ec8a_df, width="stretch")
-        if "last_ec8a_df" in st.session_state:
-            render_module_download_trigger(
-                st.session_state.last_ec8a_df,
-                "Ground_Truth_EC8A_Audit",
-                "ground_truth_dl",
-            )
-        render_institutional_purge_engine("t8_purge")
-
-    with tabs[8]:
-        st.subheader("📂 Bulk Throughput Tunnel Sync")
-        global_search_string = st.text_input(
-            "Input specific Profile target parameters (Name/NIN/VIN):"
-        ).strip()
-        if st.button("Fire Core Scan"):
-            st.success(
-                f"Scan completed. String '{global_search_string}' verified safely against local registry schemas partition filters."
-            )
-        render_institutional_purge_engine("t9_purge")
-
-    with tabs[9]:
-        st.subheader("📜 Strategic Waiver Assignment Parameters Matrix Ledgers")
-        waiver_records_array = []
-        all_wards = GEOGRAPHY["Billiri LGA"] + GEOGRAPHY["Balanga LGA"]
-        for index_node, ward_string_name in enumerate(all_wards):
-            lga_name = (
-                "BILLIRI" if ward_string_name in GEOGRAPHY["Billiri LGA"] else "BALANGA"
-            )
-            waiver_records_array.append(
-                {
-                    "LGA Territory Identification Link": f"{lga_name} CONST AREA",
-                    "Administrative Ward Boundary Target": ward_string_name.upper(),
-                    "Waivers Dispatched Allocation": 1 + (index_node % 3),
-                    "Financial Allocation Metric Equivalent": 150000 * (index_node % 4),
-                    "Bypass Signature Seal String": f"EXE-AUTH-GMB-{lga_name[:3]}-0{index_node}",
-                }
-            )
-        df_waiver_matrix_canvas = pd.DataFrame(waiver_records_array)
-        st.dataframe(df_waiver_matrix_canvas, width="stretch")
-        render_module_download_trigger(
-            df_waiver_matrix_canvas, "Executive_Waivers_Dispatched", "t10_dl"
-        )
-        render_institutional_purge_engine("t10_purge")
-
-    with tabs[10]:
-        st.subheader("🚀 National Assembly Legislative Action Motion Tracking")
-        df_nass_bills_matrix = pd.DataFrame(
-            [
-                {
-                    "Bill Identification Code": "HB-2026-102",
-                    "Legislative Title Summary": "Agro-Processing Zone Development (Billiri/Balanga) Act",
-                    "Current Floor Progress Track": "Third Reading Concluded & Passed",
-                    "Last Checked Update Time": "May 2026",
-                },
-                {
-                    "Bill Identification Code": "HB-2026-115",
-                    "Legislative Title Summary": "Federal Medical Centre, Balanga (Establishment) Bill",
-                    "Current Floor Progress Track": "Committee Reference Referral",
-                    "Last Checked Update Time": "April 2026",
-                },
-                {
-                    "Bill Identification Code": "HB-2026-128",
-                    "Legislative Title Summary": "Gombe Basin Development Fund Bill",
-                    "Current Floor Progress Track": "First Reading Table Entry",
-                    "Last Checked Update Time": "May 2026",
-                },
-            ]
-        ).set_index("Bill Identification Code")
-        st.dataframe(df_nass_bills_matrix, width="stretch")
-        st.progress(
-            85,
-            text="HB-2026-102 Analytical Progress: 85% Concluded (Awaiting Executive Assent Node Mapping)",
-        )
-        render_institutional_purge_engine("t11_purge")
-
-    with tabs[11]:
-        st.subheader("📅 Long-Term Temporal Momentum Tracking Interface Matrix Trends")
-        mc_col1, mc_col2 = st.columns(2)
-        with mc_col1:
-            st.markdown("**Weekly Intake Performance Trajectory**")
-            st.line_chart(
-                billiri_balanga_index_metrics_mock["Voter Turnout Metric Density"]
-            )
-        with mc_col2:
-            st.markdown("**Monthly Deficiency Compression Scale Ratios**")
-            st.bar_chart(
-                billiri_balanga_index_metrics_mock["CUN Deficit Rate Proportion"]
-            )
-        render_institutional_purge_engine("t12_purge")
-
+    main_dashboard(conn)
 elif st.session_state.current_page == "skill_form":
     render_marquee_header()
     st.markdown(
-        f"""<div class="white-registry-header">{current['title']}</div>""",
+        '<div class="white-registry-header">🛠 CONSTITUENT SKILL EMPOWERMENT POOL</div>',
         unsafe_allow_html=True,
     )
     with st.form("skill_form_engine"):
         k1, k2 = st.columns(2)
         with k1:
-            sv_name = st.text_input(current["name"])
-            sv_phone = st.text_input(current["applicant_contact_number"])
-            sv_nin = st.text_input(current["your_nin"])
-            sv_vin = st.text_input(current["your_voters_card"])
-            sv_dob = st.date_input(current["dob"], value=datetime.date(2000, 1, 1))
+            sv_name = st.text_input("Full name as displayed on NIN")
+            sv_phone = st.text_input("Applicant Contact Number")
+            sv_nin = st.text_input("Your NIN number")
+            sv_vin = st.text_input("your Voters card number")
+            sv_dob = st.date_input("Date of Birth", value=datetime.date(2000, 1, 1))
             sv_gender = st.selectbox(
-                current["gender"], ["Male", "Female", "Prefer Not to Say"]
+                "Gender Matrix", ["Male", "Female", "Prefer Not to Say"]
             )
             sv_disability = st.selectbox(
-                current["disability_status"],
+                "Vulnerability/Disability Status",
                 [
                     "None",
                     "Visual Impairment",
@@ -1689,11 +141,11 @@ elif st.session_state.current_page == "skill_form":
                 ],
             )
             sv_file = st.file_uploader(
-                current["upload_profile_nin"], type=["pdf", "jpg", "png"]
+                "Upload Profile NIN Slip Document Click", type=["pdf", "jpg", "png"]
             )
         with k2:
-            klga = st.selectbox(current["your_lga"], list(LGA_WARD_DATA.keys()))
-            kward = st.selectbox(current["your_ward"], LGA_WARD_DATA.get(klga, []))
+            klga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
+            kward = st.selectbox("Your Ward", LGA_WARD_DATA.get(klga, []))
             vocation_list = [
                 "ICT & AI Core Programming",
                 "Solar Renewable Energy Engineering",
@@ -1704,21 +156,25 @@ elif st.session_state.current_page == "skill_form":
                 "Plumbing & Hydraulics Systems",
                 "Carpentry & Woodwork Manufacturing",
                 "Modern Hairdressing & Cosmetology",
-                current["other_vocation"],
+                "Other (Type Custom Vocation Below)",
             ]
-            sv_selection = st.selectbox(current["vocational_domain"], vocation_list)
+            sv_selection = st.selectbox(
+                "Vocational Domain Target Pool Sector", vocation_list
+            )
             custom_vocation = ""
-            if sv_selection == current["other_vocation"]:
-                custom_vocation = st.text_input(current["custom_vocation_prompt"])
+            if sv_selection == "Other (Type Custom Vocation Below)":
+                custom_vocation = st.text_input(
+                    "Type Your Choice Vocation Natively Here"
+                )
             st.divider()
             sv_palliative_check = st.selectbox(
-                current["prior_palliative_check"], ["No", "Yes"]
+                "Have you received a palliative from this office before?", ["No", "Yes"]
             )
 
-        sv_stmt = st.text_area(current["candidate_statement"])
-        sv_cam = st.camera_input(current["biometric_scan"])
+        sv_stmt = st.text_area("Candidate Skill Interest Statement Details")
+        sv_cam = st.camera_input("Biometric Security Verification Core Scan")
 
-        if st.form_submit_button(current["submit"]):
+        if st.form_submit_button("🚀 COMMIT APPLICATION TO TRAINING POOLS"):
             if (
                 not sv_name
                 or not sv_phone
@@ -1727,7 +183,10 @@ elif st.session_state.current_page == "skill_form":
                 or not sv_stmt
                 or sv_file is None
                 or sv_cam is None
-                or (sv_selection == current["other_vocation"] and not custom_vocation)
+                or (
+                    sv_selection == "Other (Type Custom Vocation Below)"
+                    and not custom_vocation
+                )
             ):
                 st.error(
                     "🛑 FORM ERROR: All field entries on this registration pool form are strictly mandatory. Uploads and biometric camera checks must be valid."
@@ -1745,7 +204,7 @@ elif st.session_state.current_page == "skill_form":
                 else:
                     final_skill = (
                         custom_vocation
-                        if sv_selection == current["other_vocation"]
+                        if sv_selection == "Other (Type Custom Vocation Below)"
                         else sv_selection
                     )
                     new_profile_row = {
