@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 import datetime
 import time
+import base64
+import requests
+import os
+import urllib.request  # Standard library import for external PDF streaming
 
 from registry import LGA_WARD_DATA, GEOGRAPHY, STATE_DATA_LEDGER, PROJECT_PARTITION_ID
 from ui_modules import (
@@ -15,7 +19,7 @@ from utils import trigger_background_autosave
 def supervisor_panel():
     render_marquee_header()
     st.markdown(
-        '<div class="supervisor-header">🛡️ WARD SUPERVISOR COMMAND: FORM EC8A LOGS</div>',
+        """<div class="supervisor-header">🛡️ WARD SUPERVISOR COMMAND: FORM EC8A LOGS</div>""",
         unsafe_allow_html=True,
     )
     if "sup_slip_preview" not in st.session_state:
@@ -27,11 +31,14 @@ def supervisor_panel():
             sup_name = st.text_input("Supervisor Full Name")
             sup_phone = st.text_input("Phone Number")
             sup_state = st.text_input("State Link Node", value="GOMBE STATE")
-            sup_lga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
-            sup_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(sup_lga, []))
+            sup_lga_raw = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
+
+            # Normalize mixed-case options to match registry dictionaries cleanly
+            sup_lga_clean = sup_lga_raw.upper().split()[0]
+            sup_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(sup_lga_clean, []))
             sup_unit = st.text_input("Ward Unit Tracking Code/Number")
 
-        ward_id = f"{sup_lga}_{sup_ward}".replace(" ", "_").upper()
+        ward_id = f"{sup_lga_clean}_{sup_ward}".replace(" ", "_").upper()
 
         with c2:
             tiers_selected = st.multiselect(
@@ -77,7 +84,7 @@ def supervisor_panel():
                 st.session_state.sup_slip_preview = {
                     "Supervisor": sup_name,
                     "Phone": sup_phone,
-                    "LGA": sup_lga,
+                    "LGA": sup_lga_clean,
                     "Ward": sup_ward,
                     "Unit": sup_unit,
                     "Tiers": ", ".join(tiers_selected),
@@ -99,8 +106,8 @@ def supervisor_panel():
             <div class="slip-row"><span>YOUR WARD:</span> <span>{p_data['Ward']}</span></div>
             <div class="slip-row"><span>UNIT IDENTIFIER:</span> <span>{p_data['Unit']}</span></div>
             <div class="slip-row"><span>ACTIVE TIERS:</span> <span>{p_data['Tiers']}</span></div>
-            <div class="slip-row"><span>HIGHEST TOTAL:</span> <span>{p_data['High_Vote']:}</span></div>
-            <div class="slip-row"><span>VALID CORE SUM:</span> <span>{p_data['Principal_Votes']:}</span></div>
+            <div class="slip-row"><span>HIGHEST TOTAL:</span> <span>{p_data['High_Vote']}</span></div>
+            <div class="slip-row"><span>VALID CORE SUM:</span> <span>{p_data['Principal_Votes']}</span></div>
         </div>
         """,
             unsafe_allow_html=True,
@@ -138,8 +145,11 @@ def agent_panel():
     with a1:
         agt_name = st.text_input("Agent Full Operator Name")
         agt_phone = st.text_input("Agent Communication Contact Phone")
-        agt_lga = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
-        agt_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(agt_lga, []))
+        agt_lga_raw = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
+
+        # Normalize mixed-case options to match registry dictionaries cleanly
+        agt_lga_clean = agt_lga_raw.upper().split()[0]
+        agt_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(agt_lga_clean, []))
         agt_pu_num = (
             st.text_input("Polling Unit (PU) Identity Name Code")
             .strip()
@@ -147,7 +157,7 @@ def agent_panel():
             .upper()
         )
 
-    pu_id = f"{agt_lga}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
+    pu_id = f"{agt_lga_clean}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
 
     if agt_pu_num != "" and pu_id in st.session_state.submitted_pus:
         st.error(
@@ -202,7 +212,7 @@ def agent_panel():
                     st.session_state.agt_slip_preview = {
                         "Agent": agt_name,
                         "Phone": agt_phone,
-                        "LGA": agt_lga,
+                        "LGA": agt_lga_clean,
                         "Ward": agt_ward,
                         "PU": agt_pu_num,
                         "Tiers": ", ".join(agt_tiers),
@@ -225,8 +235,8 @@ def agent_panel():
                 <div class="slip-row"><span>YOUR LGA:</span> <span>{a_data['LGA']}</span></div>
                 <div class="slip-row"><span>YOUR WARD:</span> <span>{a_data['Ward']}</span></div>
                 <div class="slip-row"><span>POLLING UNIT NUM:</span> <span>{a_data['PU']}</span></div>
-                <div class="slip-row"><span>AUDITED BALANCES:</span> <span>{a_data['Total_Votes']:}</span></div>
-                <div class="slip-row"><span>VALID QUANTUM LOG:</span> <span>{a_data['Principal_Votes']:}</span></div>
+                <div class="slip-row"><span>AUDITED BALANCES:</span> <span>{a_data['Total_Votes']}</span></div>
+                <div class="slip-row"><span>VALID QUANTUM LOG:</span> <span>{a_data['Principal_Votes']}</span></div>
             </div>
             """,
                 unsafe_allow_html=True,
@@ -272,7 +282,7 @@ def main_dashboard(conn):
 
     billiri_balanga_index_metrics_mock = pd.DataFrame(
         {
-            "Constituency Node": ["BILLIRI/BALANGA FEDERAL CONSTITUENCY"],
+            "Constituency Node": ["BALANGA/BILLIRI FEDERAL CONSTITUENCY"],
             "Performance Index Score": [88.2],
             "CUN Deficit Rate Proportion": [19.8],
             "Voter Turnout Metric Density": [81.3],
@@ -290,7 +300,7 @@ def main_dashboard(conn):
             )
         with mc2:
             st.markdown(
-                "**Processing Stream Success Metrics Vector Chart Across Billiri/Balanga Constituency**"
+                "**Processing Stream Success Metrics Vector Chart Across Balanga/Billiri Constituency**"
             )
             st.bar_chart(billiri_balanga_index_metrics_mock["Performance Index Score"])
         st.dataframe(st.session_state.global_registry, width="stretch")
@@ -391,7 +401,7 @@ def main_dashboard(conn):
                     ],
                     "Sandbox_Static_Override_Circuit": "ACTIVE LOCAL BACKUP CONTAINER",
                     "Internal_Target_Matrix_Stencil": PROJECT_PARTITION_ID,
-                    "Current_System_Clock_Time": "2026-05-25 21:20:50.370383",
+                    "Current_System_Clock_Time": "2026-06-17 16:03:28",
                 }
             )
         render_institutional_purge_engine("t3_purge")
@@ -527,7 +537,6 @@ def main_dashboard(conn):
             (550000 + (len(k) * 19280)) for k in STATE_DATA_LEDGER.keys()
         )
 
-        # ACTIVE 5-TIER COMPLETE ELECTION MONITORING FLAGS
         st.markdown(
             f"""
         **Static Visual Alignment Layout Flags Check:**
@@ -678,32 +687,73 @@ def main_dashboard(conn):
 
     with tabs[10]:
         st.subheader("🚀 National Assembly Legislative Action Motion Tracking")
+        st.markdown(
+            "**Official Cumulative Bills Ledger — Sponsoring Authority: Hon. Ali Isa J.C. (Minority Whip)**"
+        )
+
+        # Exclusive tracking array for bills introduced/passed by Hon. Ali Isa J.C. from resumption up to date
         df_nass_bills_matrix = pd.DataFrame(
             [
                 {
-                    "Bill Identification Code": "HB-2026-102",
-                    "Legislative Title Summary": "Agro-Processing Zone Development (Billiri/Balanga) Act",
-                    "Current Floor Progress Track": "Third Reading Concluded & Passed",
-                    "Last Checked Update Time": "May 2026",
+                    "Bill ID Code": "HB. 1280",
+                    "Legislative Title Summary": "Constituencies and Senatorial Districts Development Fund Bill",
+                    "Key Provisions & Structural Objective": "Establishment of a secure, data-driven legislative framework for transparent financing, monitoring, and execution of grassroots constituency projects nationwide.",
+                    "Current Progress Status": "First Reading Concluded / Referred to Committee on Constituency Outreach",
                 },
                 {
-                    "Bill Identification Code": "HB-2026-115",
-                    "Legislative Title Summary": "Federal Medical Centre, Balanga (Establishment) Bill",
-                    "Current Floor Progress Track": "Committee Reference Referral",
-                    "Last Checked Update Time": "April 2026",
+                    "Bill ID Code": "HB. 1277",
+                    "Legislative Title Summary": "Orthopedic Hospital Management Board Act (Amendment) Bill",
+                    "Key Provisions & Structural Objective": "Amending the legacy management framework to expand healthcare equity and incorporate specialized clinical centers within the Gombe State axis.",
+                    "Current Progress Status": "Second Reading Passed / Under Active Committee Assignment Review",
                 },
                 {
-                    "Bill Identification Code": "HB-2026-128",
-                    "Legislative Title Summary": "Gombe Basin Development Fund Bill",
-                    "Current Floor Progress Track": "First Reading Table Entry",
-                    "Last Checked Update Time": "May 2026",
+                    "Bill ID Code": "HB. 1279",
+                    "Legislative Title Summary": "National Centre for Agricultural Mechanization Act (Repeal & Enactment) Bill",
+                    "Key Provisions & Structural Objective": "Repealing older frameworks to modernize agro-mechanization systems, targeting direct equipment access structures for Balanga and Billiri smallholders.",
+                    "Current Progress Status": "First Reading Concluded / Awaiting Second Reading Debate Schedule",
+                },
+                {
+                    "Bill ID Code": "HB. 1549",
+                    "Legislative Title Summary": "National Hajj Commission of Nigeria (NAHCON) Act (Amendment) Bill",
+                    "Key Provisions & Structural Objective": "Institutionalizing stricter financial accountability, administrative reforms, and welfare tracking parameters for pilgrimage operations.",
+                    "Current Progress Status": "First Reading Concluded / Scheduled for Plenary Debate Sync",
+                },
+                {
+                    "Bill ID Code": "HB. 1278",
+                    "Legislative Title Summary": "Constitution of the Federal Republic of Nigeria, 1999 (Alteration) Bill",
+                    "Key Provisions & Structural Objective": "Targeted constitutional amendment focusing on restructuring local government financial autonomy, devolution of powers, and equity metrics.",
+                    "Current Progress Status": "First Reading Concluded / Consolidated with Joint Constitution Review Committee",
+                },
+                {
+                    "Bill ID Code": "HB. 798 (Legacy Master)",
+                    "Legislative Title Summary": "First Degree and HND Dichotomy and Discrimination (Abolition & Prohibition) Act",
+                    "Key Provisions & Structural Objective": "Historical foundational bill prohibiting employment discrimination between university degrees and polytechnic diplomas in public/private sectors.",
+                    "Current Progress Status": "Passed House & Senate Concurrently / Maintained in Archive for Legislative Reintroduction",
                 },
             ]
-        ).set_index("Bill Identification Code")
+        ).set_index("Bill ID Code")
+
         st.dataframe(df_nass_bills_matrix, width="stretch")
+
+        # Exclusive Legislative Output Snapshot for Hon. Ali Isa J.C.
+        st.markdown("### 📊 Sponsor Legislative Output Profile (Cumulative)")
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric("Exclusive Bills Sponsored", "6 Bills", delta="Active Tracks")
+        m_col2.metric(
+            "Advanced to 2nd Reading / Comm.", "2 Bills", delta="33.3% Conversion"
+        )
+        m_col3.metric(
+            "Co-Sponsored House Motions", "14 Motions", delta="Legislative Alliances"
+        )
+        m_col4.metric(
+            "Constituency Interventions",
+            "100% Completed",
+            delta="Balanga & Billiri Node",
+        )
+
         st.progress(
-            85,
-            text="HB-2026-102 Analytical Progress: 85% Concluded (Awaiting Executive Assent Node Mapping)",
+            33,
+            text="Sponsor Progress Vector: 33.3% of active bills have moved past the initial reading phase into advanced committee assessment pipelines.",
         )
         render_institutional_purge_engine("t11_purge")
 
@@ -721,3 +771,143 @@ def main_dashboard(conn):
                 billiri_balanga_index_metrics_mock["CUN Deficit Rate Proportion"]
             )
         render_institutional_purge_engine("t12_purge")
+
+
+def render_beyond_rhetoric_panel():
+    # 🏛️ Distinct Beyond Rhetoric Project Identity Layout Header Component
+    st.markdown(
+        """
+    <div class="beyond-rhetoric-header">
+        <div class="beyond-title">🏛️ BEYOND RHETORIC PROJECT</div>
+        <div style="color: #8892B0; font-size: 1.1rem; font-style: italic;">
+            Official Verified Constituency Ledger for Infrastructure, Healthcare, and Social Interventions
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # Master case-sensitive routing targeting the true active deployment branch
+    project_registry = {
+        "Project Alpha": {
+            "category": "Infrastructure",
+            "ward": "Balanga North",
+            "status": "100% Completed",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/1_compressed.pdf",
+        },
+        "Project Beta": {
+            "category": "Healthcare Support",
+            "ward": "Billiri Central",
+            "status": "100% Completed",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/2_compressed.pdf",
+        },
+        "Project Gamma": {
+            "category": "Education Infrastructure",
+            "ward": "Billiri North",
+            "status": "100% Completed",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/3_compressed.pdf",
+        },
+        "Project Delta": {
+            "category": "Agricultural Support",
+            "ward": "Tal Ward",
+            "status": "100% Completed",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/4_compressed.pdf",
+        },
+        "Project Epsilon": {
+            "category": "Water and Sanitation",
+            "ward": "Gelengu Ward",
+            "status": "100% Completed",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/5_compressed.pdf",
+        },
+    }
+
+    if "active_project" not in st.session_state:
+        st.session_state.active_project = list(project_registry.keys())[0]
+
+    col_registry, col_viewer = st.columns([2, 3])
+
+    with col_registry:
+        st.markdown(
+            "<h4 style='color:#D4AF37;'>📋 Select Project to Inspect</h4>",
+            unsafe_allow_html=True,
+        )
+
+        for proj_name, details in project_registry.items():
+            with st.container(border=True):
+                st.markdown(
+                    f"##### <span style='color:#F3F4F6;'>{proj_name}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    f"📍 Location: {details['ward']} | 🏷️ Type: {details['category']}"
+                )
+                st.caption(f"`🟢 Status: {details['status']}`")
+
+                if st.button("Inspect Verification Ledger", key=f"btn_{proj_name}"):
+                    st.session_state.active_project = proj_name
+                    st.rerun()
+
+    with col_viewer:
+        selected = st.session_state.active_project
+        pdf_url = project_registry[selected]["url"]
+
+        st.markdown(
+            f"### 🔍 Live Verification Ledger: <span style='color:#D4AF37;'>{selected}</span>",
+            unsafe_allow_html=True,
+        )
+        st.write("---")
+
+        # Robust cross-browser Base64 preview streaming interface
+        try:
+            with st.spinner("🔄 Compiling Document Visual Canvas..."):
+                req = urllib.request.Request(
+                    pdf_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+                )
+                with urllib.request.urlopen(req, timeout=7) as response_stream:
+                    pdf_bytes = response_stream.read()
+                    base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+
+                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="750" type="application/pdf"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
+                network_status = "Secure External Link Active"
+
+        except Exception:
+            # Fallback error container rendering clean 404 metrics natively
+            st.markdown(
+                f"""
+            <div style="background-color: #1e1112; border: 1px solid #ff4b4b; padding: 20px; border-radius: 6px; text-align: center;">
+                <h6 style="color: #ff4b4b; margin-top: 0;">📋 Asset Registry Index Desync (404)</h6>
+                <p style="color: #ffffff; font-size: 13px; margin-bottom: 0;">
+                    The cryptographic ledger pointer for <b>{selected}</b> does not match an active asset path on your <b>NameYourGitHubUsername</b> branch setup. Verify your file parameters configuration layout.
+                </p>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+            network_status = "Asset Link Resolution Interrupted"
+
+        # Core interactive action container button
+        st.markdown(
+            f"""
+        <a href="{pdf_url}" target="_blank" style="text-decoration: none;">
+            <div style="background-color: #D4AF37; color: #030D1B; text-align: center; font-weight: bold; padding: 12px; border-radius: 4px; font-size: 14px; margin-top: 15px; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">
+                📂 LAUNCH MULTI-PAGE SECURE RECORD (NEW TAB)
+            </div>
+        </a>
+        """,
+            unsafe_allow_html=True,
+        )
+
+        # High-visibility companion data matrix
+        with st.container(border=True):
+            st.markdown("##### 📊 Quick-Reference Verification Audit")
+            t_col1, t_col2 = st.columns(2)
+            with t_col1:
+                st.metric("Target Ward Sector", project_registry[selected]["ward"])
+                st.metric(
+                    "Project Classification", project_registry[selected]["category"]
+                )
+            with t_col2:
+                st.metric("Execution Phase", project_registry[selected]["status"])
+                st.metric("Network Status", network_status)
