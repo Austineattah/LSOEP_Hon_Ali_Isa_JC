@@ -793,31 +793,31 @@ def render_beyond_rhetoric_panel():
             "category": "Infrastructure",
             "ward": "Balanga North",
             "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/1_compressed.pdf",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/main/1_compressed.pdf",
         },
         "Project Beta": {
             "category": "Healthcare Support",
             "ward": "Billiri Central",
             "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/2_compressed.pdf",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/main/2_compressed.pdf",
         },
         "Project Gamma": {
             "category": "Education Infrastructure",
             "ward": "Billiri North",
             "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/3_compressed.pdf",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/main/3_compressed.pdf",
         },
         "Project Delta": {
             "category": "Agricultural Support",
             "ward": "Tal Ward",
             "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/4_compressed.pdf",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/main/4_compressed.pdf",
         },
         "Project Epsilon": {
             "category": "Water and Sanitation",
             "ward": "Gelengu Ward",
             "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/NameYourGitHubUsername/5_compressed.pdf",
+            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/refs/heads/main/5_compressed.pdf",
         },
     }
 
