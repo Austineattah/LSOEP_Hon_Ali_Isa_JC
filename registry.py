@@ -1,3 +1,18 @@
+# ==============================================================================
+# 🏛️ LSOEP FEDERAL MASTER REGISTRY & GEOGRAPHIC DATA LAYER
+# Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
+# File: registry.py (Aggregated Master Data & Session Memory State Core)
+# ==============================================================================
+
+import streamlit as st
+import pandas as pd
+import os
+import json
+
+# Institutional Software Display Branding Variables
+HON_TITLE = "Hon. Ali Isa JC, PhD"
+CONSTITUENCY_DESC = "Balanga and Billiri Federal Constituency (Gombe State)"
+
 GEOGRAPHY = {
     "Billiri LGA": [
         "BAGANJE NORTH",
@@ -26,336 +41,91 @@ GEOGRAPHY = {
 }
 
 LGA_WARD_DATA = {
-    "BILLIRI": [
-        "BAGANJE NORTH",
-        "BAGANJE SOUTH",
-        "BARE",
-        "BILLIRI NORTH",
-        "BILLIRI SOUTH",
-        "KALMAI",
-        "TAL",
-        "TANGLANG",
-        "TODI",
-        "TUDU KWAYA",
-    ],
-    "BALANGA": [
-        "BAMBAM",
-        "BANGU",
-        "DADIYA",
-        "GELENGU / BALANGA",
-        "KINDIYO",
-        "KULANI / DEGRE / SIKKAM",
-        "MWONA",
-        "NYUWAR / JESSU",
-        "SWA / REF / W. WAJA",
-        "TALASSE / DONG / REME",
-    ],
+    "BILLIRI": GEOGRAPHY["Billiri LGA"],
+    "BALANGA": GEOGRAPHY["Balanga LGA"],
 }
 
-MOCK_DATA_REGISTRY = [
+# 🏛️ EXPLICIT COMMUNITY STAKEHOLDER DIRECTORY
+COMMUNITY_LEADERS = {
+    "Hon. Ali Isa JC, PhD": {
+        "contact": "08000000000",
+        "nin": "00000000000",
+        "lga": "BALANGA",
+        "ward": "CENTRAL",
+        "portfolio": "Federal Representative, Balanga/Billiri",
+    },
+    "Dr. Musa Tango": {
+        "contact": "08011111111",
+        "nin": "11111111111",
+        "lga": "BILLIRI",
+        "ward": "TAL",
+        "portfolio": "Director of Skills, LSOEP",
+    },
+    "Hajia Amina S. Ahmed": {
+        "contact": "08022222222",
+        "nin": "22222222222",
+        "lga": "BALANGA",
+        "ward": "DADIYA",
+        "portfolio": "Women Mobilization Lead, Gombe South",
+    },
+}
+
+# ==============================================================================
+# NEW: LEGISLATIVE DATA
+# ==============================================================================
+SPONSORED_BILLS = [
     {
-        "ID": "LSOEP-GMB-BIL-001",
-        "Name": "John Ochui Ture",
-        "LGA": "Billiri LGA",
-        "Ward": "TURE",
-        "NIN": "12345678901",
-        "Status": "Verified",
-        "Allocation": "SME Seed Capital",
+        "title": "A Bill for an Act to Establish the Federal College of Horticulture, Dadin Kowa",
+        "status": "Passed",
+        "summary": "This landmark bill establishes a specialized Federal College of Horticulture in Dadin Kowa, Gombe State. It aims to promote agricultural education, develop modern horticultural practices, and create a hub for research and innovation in the North-East, thereby boosting food security and providing employment opportunities for the youth.",
     },
     {
-        "ID": "LSOEP-GMB-BAL-002",
-        "Name": "Mary Akpan Talasse",
-        "LGA": "Balanga LGA",
-        "Ward": "TALASSE",
-        "NIN": "98765432109",
-        "Status": "Verified",
-        "Allocation": "Agro-Development Grant",
+        "title": "A Bill for an Act to amend the Trafficking in Persons (Prohibition) Enforcement and Administration Act, 2015",
+        "status": "In Committee",
+        "summary": "This bill seeks to strengthen the legal framework for combating human trafficking by introducing stricter penalties for offenders, enhancing victim protection measures, and improving the operational capacity of NAPTIP to investigate and prosecute trafficking cases.",
     },
     {
-        "ID": "LSOEP-GMB-BIL-003",
-        "Name": "Peter Ogar Kalmai",
-        "LGA": "Billiri LGA",
-        "Ward": "KALMAI",
-        "NIN": "45678912301",
-        "Status": "Pending Review",
-        "Allocation": "Educational Bursary",
+        "title": "A Bill for an Act to Establish the National Skills and Innovation Development Council",
+        "status": "First Reading",
+        "summary": "Proposes the creation of a national council to streamline and regulate vocational and technical training across Nigeria. The goal is to standardize certification, promote innovation, and align skill acquisition programs with the demands of the modern economy.",
     },
     {
-        "ID": "LSOEP-GMB-BAL-004",
-        "Name": "Grace Etta Swa",
-        "LGA": "Balanga LGA",
-        "Ward": "SWA",
-        "NIN": "78912345602",
-        "Status": "Verified",
-        "Allocation": "Dry Season Irrigation Support",
-    },
-    {
-        "ID": "LSOEP-GMB-BIL-005",
-        "Name": "Michael Besong Todi",
-        "LGA": "Billiri LGA",
-        "Ward": "TODI",
-        "NIN": "32165498705",
-        "Status": "Flagged",
-        "Allocation": "None - Verification Required",
+        "title": "Motion on the Need to Address the Menace of Soil Erosion in Balanga/Billiri Federal Constituency",
+        "status": "Adopted",
+        "summary": "A successful motion that called the Federal Government's attention to the severe ecological degradation caused by soil erosion in the constituency. The motion urged relevant agencies like the Ecological Fund Office to implement urgent intervention projects to protect farmlands, infrastructure, and residential areas.",
     },
 ]
 
+# ==============================================================================
+# STRATEGIC COMMITTEE CREDENTIALS
+# ==============================================================================
+STRATEGIC_COMMITTEE_NAMES = [
+    "Committee 1: Finance & Appropriations",
+    "Committee 2: Healthcare & Social Welfare",
+    "Committee 3: Education & Human Capital",
+    "Committee 4: Infrastructure & Public Works",
+    "Committee 5: Agriculture & Rural Development",
+    "Committee 6: Security & Community Affairs",
+    "Committee 7: Youth & Sports Development",
+    "Committee 8: Women Affairs & Inclusion",
+    "Committee 9: Legislative Liaison & Compliance",
+    "Committee 10: Constituency Outreach & Engagement",
+]
 
-STATE_DATA_LEDGER = {
-    "Abia State": {
-        "ABA NORTH": ["Eziama", "Industrial Area", "Osusu I", "Osusu II", "Uratta"],
-        "ABA SOUTH": ["Aba River", "Aba Town Hall", "Enyimba", "Asa Triangle"],
-        "OHAFIA": ["Ania", "Ohafor", "Ohafia Urban"],
-        "UMUAHIA NORTH": ["Ibeku East I", "Ibeku East II", "Umuahia Urban I"],
-    },
-    "Adamawa State": {
-        "YOLA NORTH": ["Ajiya", "Gbadabiri", "Nassarowo", "Yolde Pate"],
-        "YOLA SOUTH": ["Adarawo", "Bole Yolde", "Makama", "Mbamba"],
-        "MUBI NORTH": ["Lokuwa", "Digil", "Yelwa"],
-        "DEMSA": ["Demsa Moro", "Bille", "Gwamba"],
-    },
-    "Akwa Ibom State": {
-        "UYO": ["Uyo Urban I", "Uyo Urban II", "Etoi I", "Etoi II", "Offot I"],
-        "EKET": ["Eket Urban I", "Eket Urban II", "Afaha Clan", "Okon Clan"],
-        "IKOT EKPENE": ["Ikot Ekpene Urban I", "Ikot Ekpene Urban II", "Amayam"],
-        "ORON": ["Oron Urban I", "Oron Urban II", "Oron Urban III"],
-    },
-    "Anambra State": {
-        "AWKA NORTH": ["Achalla I", "Achalla II", "Amansea", "Mgbakwu"],
-        "AWKA SOUTH": ["Awka I", "Awka II", "Awka III", "Nise I", "Amawbia I"],
-        "ONITSHA NORTH": ["American Quarters", "Inland Town I", "Inland Town II"],
-        "NNEWI NORTH": ["Otolo", "Uruagu", "Umudim", "Nnewichi"],
-    },
-    "Bauchi State": {
-        "BAUCHI": ["Bakari Dukku", "Daniya", "Hardawa", "Makama Sarki"],
-        "KATAGUM": ["Azare Federal", "Chinade", "Madangala"],
-        "MISAU": ["Misau Town", "Gwaram", "Hardawa"],
-        "ALKALERI": ["Alkaleri Ward", "Gwana", "Pali"],
-    },
-    "Bayelsa State": {
-        "SAGBAMA": ["Sagbama Ward 1", "Salope Ward 2", "Asamabiri Ward 3"],
-        "EKEREMOR": ["Ekeremor Ward 1", "Onyilolo Ward 2", "Ogbosuware Ward 3"],
-        "SOUTHERN IJAW": ["Oporoma Ward 1", "Amassoma Ward 5"],
-        "YENAGOA": ["Yenagoa Epie I", "Gbarain I"],
-    },
-    "Benue State": {
-        "MAKURDI": ["Central Markets", "Clergy Ward", "Fiidi", "Wadata"],
-        "GBOKO": ["Gboko Central", "Gboko East", "Yandev"],
-        "OTUKPO": ["Otukpo Town East", "Otukpo Town West", "Adoka"],
-        "VANDEIKYA": ["Vandeikya Township", "Mbaduku", "Tsambe"],
-    },
-    "Borno State": {
-        "MAIDUGURI": ["Bolori I", "Bolori II", "Shehuri North", "Shehuri South"],
-        "BIU": ["Biu Central", "Miringa", "Zarawuyaku"],
-        "JERE": ["Alau", "Bale Galtimari", "Maimusari"],
-        "GWOZA": ["Gwoza Town", "Pulka", "Ashigashiya"],
-    },
-    "Gombe State": {
-        "BILLIRI": [
-            "BAGANJE NORTH",
-            "BAGANJE SOUTH",
-            "BARE",
-            "BILLIRI NORTH",
-            "BILLIRI SOUTH",
-            "KALMAI",
-            "TAL",
-            "TANGLANG",
-            "TODI",
-            "TUDU KWAYA",
-        ],
-        "BALANGA": [
-            "BAMBAM",
-            "BANGU",
-            "DADIYA",
-            "GELENGU / BALANGA",
-            "KINDIYO",
-            "KULANI / DEGRE / SIKKAM",
-            "MWONA",
-            "NYUWAR / JESSU",
-            "SWA / REF / W. WAJA",
-            "TALASSE / DONG / REME",
-        ],
-        "GOMBE": ["Gombe East", "Gombe West", "Jekadafari", "Pantami"],
-        "AKKO": ["Akko Town", "Kumo Central", "Pindiga"],
-        "YAMALTU DEBA": ["Deba", "Zambuk", "Kano"],
-    },
-    "Delta State": {
-        "WARRI SOUTH": ["Warri GRA", "Warri Central", "Warri Pesu", "Warri Okere"],
-        "BOMADI": ["Akugbene", "Bomadi Town", "Esama"],
-        "ASABA": ["Asaba Cable", "Umuaji", "West End"],
-        "UGHELLI NORTH": ["Ughelli Urban I", "Ughelli Urban II", "Orogun I"],
-    },
-    "Ebonyi State": {
-        "ABAKALIKI": ["Azuiyiokwu", "Azuiyiator", "Abakiliki Town", "Kpirikpiri"],
-        "AFIKPO": ["Afikpo Town", "Unwana I", "Unwana II"],
-        "IZZIE": ["Izzi Urban", "Ezza Inyimagu", "Ndieze"],
-        "OHAUKWU": ["Ezzamgbo", "Effium I", "Effium II"],
-    },
-    "Edo State": {
-        "OREDO": ["Oredo I", "Oredo II", "Ikpoba Hill", "New Benin"],
-        "OVIA NORTH EAST": ["Adolor", "Ofunama", "Okada"],
-        "ESAN CENTRAL": ["Irrua Urban", "Ewu Urban", "Opoji"],
-        "ETSAKO WEST": ["Auchi Urban I", "Auchi Urban II", "Uzairue"],
-    },
-    "Ekiti State": {
-        "ADO EKITI": ["Ado I", "Ado II", "Ado III", "Okesha", "Irona"],
-        "IKERE": ["Ikere Urban", "Odo Oja", "Ogbonjana"],
-        "OMUO": ["Omuo Township", "Omuo East", "Kota"],
-        "IKOLE": ["IKole Urban", "Asin", "Odo Oro"],
-    },
-    "Enugu State": {
-        "ENUGU NORTH": ["Asata", "China Town", "Ogui New Layout"],
-        "ENUGU SOUTH": ["Awkunanaw I", "Awkunanaw II", "Uwani"],
-        "NSUKKA": ["Nsukka Urban", "Alor Uno", "Eha Alumona"],
-        "UDI": ["Udi Town", "9th Mile", "Abor"],
-    },
-    "FCT Abuja": {
-        "AMAC": ["Garki", "Wuse", "Asokoro", "Maitama", "Nyanya", "Karu"],
-        "GWAGWALADA": ["Gwagwalada Center", "Paiko", "Zuba"],
-        "BWARI": ["Bwari Central", "Kubwa", "Ushafa"],
-        "KUJE": ["Kuje Center", "Rubochi", "Gaube"],
-    },
-    "Imo State": {
-        "OWERRI MUNICIPAL": ["Owerri Urban I", "Owerri Urban II", "Aladinma"],
-        "ORLU": ["Orlu Urban", "Amaifeke", "Omuma"],
-        "OKIGWE": ["Okigwe Town", "Amuro", "Ezinachi"],
-        "MBEISE": ["Ogbe", "Ekwereazu", "Ahiara"],
-    },
-    "Jigawa State": {
-        "DUTSE": ["Dutse Gari", "Kachi", "Limawa", "Madobi"],
-        "HADEJIA": ["Hadejia Central", "Matsaro", "Sabon Garu"],
-        "KAZAURE": ["Kazaure Gari", "Ba'auzini", "Dandi"],
-        "GUMEL": ["Gumel Town", "Galgadi", "Hammado"],
-    },
-    "Kaduna State": {
-        "SOBA": [
-            "Alhazai",
-            "Danwata",
-            "Gamagira",
-            "Garkaye",
-            "Gimba",
-            "KINKIBA",
-            "Kwassallo",
-            "Maigana",
-            "Rahama",
-            "Soba",
-            "Turawa",
-        ],
-        "KADUNA NORTH": ["Dadi", "Kawo", "Gabassawa", "Unguwan Rimi"],
-        "ZARIA": ["Zaria City", "Tudun Wada", "Samaru"],
-        "KADUNA SOUTH": ["Tudun Wada West", "Barnawa", "Makera"],
-    },
-    "Kano State": {
-        "FAGGE": ["Fagge North", "Fagge South", "Kwaciri"],
-        "NASSARAWA": ["Gwagwarwa", "Kano GRA", "Tudun Murtala"],
-        "DALA": ["Dala Ward", "Gwangwazo", "Yakkaasai"],
-        "GVALE": ["Gvale Town", "Galadanchi", "Mandawari"],
-    },
-    "Katsina State": {
-        "KATSINA": ["Katsina Central", "Wakilin Kebbi", "Yamma"],
-        "FUNTUA": ["Funtua Central", "Maska", "Tudun Wada"],
-        "DAURA": ["Daura Urban", "Madoba", "Sarki"],
-        "MALUMFASHI": ["Malumfashi Town", "Yankara", "Dansarai"],
-    },
-    "Kebbi State": {
-        "BIRNIN KEBBI": ["Birnin Kebbi Central", "Nassarawa", "Gwadangaji"],
-        "ARGUNGU": ["Argungu Central", "Felande"],
-        "YURI": ["Yuri Town", "Genuwa", "Koko"],
-        "ZURU": ["Zuru Town", "Dabai", "Rikoto"],
-    },
-    "Kogi State": {
-        "LOKOJA": ["Lokoja Core", "Adankolo", "Sarki Ward"],
-        "OKENE": ["Okene Central", "Bariki", "Onyukoko"],
-        "ANYIGBA": ["Anyigba Town", "Agbeji", "Ayingba Rural"],
-        "KABBA": ["Kabba Town", "Asaya", "Okejumu"],
-    },
-    "Kwara State": {
-        "ILORIN WEST": ["Adewole", "Baboko", "Oloje", "Wara"],
-        "ILORIN EAST": ["Gambari", "Oke Oyi", "Ipata"],
-        "OFFA": ["Offa Township", "Balogun", "Essa"],
-        "OMU ARAN": ["Omu Aran Core", "Ipetu", "Arandun"],
-    },
-    "Lagos State": {
-        "ALIMOSHO": ["Egbe-Idimu", "Ipaja", "Ikotun", "Gowon Estate"],
-        "IKEJA": ["Ikeja GRA", "Anifowoshe", "Ojodu", "Oregun"],
-        "SURULERE": ["Adeniran Ogunsanya", "Ojuelegba", "Aguda", "Ijesha"],
-        "BADAGRY": ["Badagry Town", "Iworo", "Ajara"],
-    },
-    "Nasarawa State": {
-        "LAFIA": ["Lafia East", "Lafia Central", "Chiroma", "Makama"],
-        "KEFFI": ["Keffi Central", "Yelwa", "Angwan Rimi"],
-        "AKWANGA": ["Akwanga Town", "Gudi", "Mada"],
-        "KARU": ["Mararaba", "Karu Urban", "Ado", "Nyanya Boundary"],
-    },
-    "Niger State": {
-        "CHANCHAGA": ["Minna Central", "Sabon Gari", "Tunga"],
-        "BIDA": ["Bida Central", "Dokodza", "Masaga"],
-        "SULEJA": ["SULEJA Town", "Abuja Mandate", "Iku"],
-        "KONTAGORA": ["Kontagora Town", "Usman", "Central"],
-    },
-    "Ogun State": {
-        "ABEOKUTA SOUTH": ["Ake I", "Ake II", "Imo Ward", "Lafenwa"],
-        "IJEBU ODE": ["Ijebu Ode Central", "Ome Ward"],
-        "SAGAMU": ["Sagamu Central", "Sabo", "Makun"],
-        "OTA": ["Ota Urban", "Iju", "Sango"],
-    },
-    "Ondo State": {
-        "AKURE SOUTH": ["Akure Core", "Arakale", "Gbogi", "Isinkan"],
-        "ONDO WEST": ["Ondo Core", "Yaba Ward"],
-        "OWO": ["Owo Township", "Ehin Ogbe", "Igboroko"],
-        "OKITIPUPA": ["Okitipupa Town", "Ikoya", "Ilutitun"],
-    },
-    "Osun State": {
-        "OSOGBO": ["Osogbo Central", "Ataoja I", "Ataoja II", "Alekuwodo"],
-        "IFE CENTRAL": ["Ilare", "Iremo", "More Ward"],
-        "ILESHA WEST": ["Ilesha Town", "Omofe", "Ereja"],
-        "EDE SOUTH": ["Ede Town", "Babaruba", "Okejimi"],
-    },
-    "Oyo State": {
-        "IBADAN NORTH": ["Agodi", "Bodija", "Mokola", "Sabo"],
-        "OYO WEST": ["Oyo Central", "Isokun", "Opapa"],
-        "OGBOMOSO NORTH": ["Oja Igbo", "Sabon Gari", "Isale General"],
-        "ISEYIN": ["Iseyin Town", "Okeho", "Ado Awaye"],
-    },
-    "Plateau State": {
-        "JOS NORTH": ["Jos Central", "Gangare", "Tafawa Balewa"],
-        "JOS SOUTH": ["Bukuru", "Du Ward", "Gyel Ward"],
-        "PANKSHIN": ["Pankshin Town", "Wokkos", "Fier"],
-        "SHENDAM": ["Shendam Town", "Kalong", "Shimankar"],
-    },
-    "Rivers State": {
-        "PORT HARCOURT": ["PH I", "PH II", "Nkpolu Oroworukwo"],
-        "OBIO-AKPOR": ["Rumueme", "Choba", "Elelenwo"],
-        "BONNY": ["Bonny Town I", "Finima"],
-        "DEGEMA": ["Degema Urban", "Bakana"],
-    },
-    "Sokoto State": {
-        "SOKOTO NORTH": ["Sokoto Central", "Waziri Ward", "Rijiyar Zaki"],
-        "WAMAKKO": ["Wamakko Town", "Gidan Bubu"],
-        "TAMBUWAL": ["Tambuwal Town", "Dogon Daji"],
-        "GURONYO": ["Guronyo Town", "Rimawa"],
-    },
-    "Taraba State": {
-        "JALINGO": ["Jalingo Central", "Turaki Ward", "Barade Ward"],
-        "WUKARI": ["Wukari Central", "Avyi"],
-        "BALI": ["Bali Town", "Suntai"],
-        "GASHAKA": ["Serti", "Mayo Selbe"],
-    },
-    "Yobe State": {
-        "DAMATURU": ["Damaturu Central", "Maisandari", "Pawari"],
-        "POTISKUM": ["Potiskum Central", "Bolewa"],
-        "GASHUA": ["Gashua Town", "Bade"],
-        "GEIDAM": ["Geidan Town", "Asheik"],
-    },
-    "Zamfara State": {
-        "GUSAU": ["Gusau Central", "Galadima", "Mayana"],
-        "KAURA NAMODA": ["Kaura Central", "Bangana"],
-        "TFAFE": ["Tfafe Town", "Kazaure"],
-        "MARADUN": ["Maradun Town", "Dakai"],
-    },
+STRATEGIC_COMMITTEE_PASSWORDS = {
+    "Committee 1: Finance & Appropriations": "ten",
+    "Committee 2: Healthcare & Social Welfare": "nine",
+    "Committee 3: Education & Human Capital": "eight",
+    "Committee 4: Infrastructure & Public Works": "seven",
+    "Committee 5: Agriculture & Rural Development": "six",
+    "Committee 6: Security & Community Affairs": "five",
+    "Committee 7: Youth & Sports Development": "four",
+    "Committee 8: Women Affairs & Inclusion": "three",
+    "Committee 9: Legislative Liaison & Compliance": "two",
+    "Committee 10: Constituency Outreach & Engagement": "one",
 }
 
-PROJECT_PARTITION_ID = "BALANGA/BILLIRI_GOMBE"
+PROJECT_PARTITION_ID = "Balanga/Billiri_GOMBE"
 COLUMNS_STRUCTURE = [
     "NIN",
     "VIN",
@@ -384,6 +154,68 @@ COLUMNS_STRUCTURE = [
     "Remarks",
     "Timestamp",
 ]
+STRATEGIC_COMMITTEE_COLS = [
+    "Committee_Node",
+    "First_Name",
+    "Surname",
+    "Contact_Number",
+    "Gender",
+    "Account_Number",
+    "Account_Name",
+    "Bank",
+    "LGA",
+    "Ward",
+    "NIN_Number",
+    "Voters_Card_Number",
+    "Timestamp",
+]
+LITIGATION_AGENT_COLS = [
+    "Polling_Unit_Name",
+    "Ward_Collation_Officer_Key",
+    "Accredited_Voters",
+    "APC_Votes",
+    "NDC_Votes",
+    "PDP_Votes",
+    "ADC_Votes",
+    "BVAS_Serial_Number",
+    "Incident_Occurred",
+    "Incident_Form_Scenario",
+    "Timestamp",
+]
 
 OFFLINE_REGISTRY_CACHE = "offline_registry_cache.csv"
 OFFLINE_METADATA_CACHE = "offline_metadata_cache.json"
+ANNOUNCEMENT_CACHE_FILE = "announcement_cache.txt"
+
+
+def initialize_system_states():
+    """Aggregated Session State Initializer Engine called natively by main.py."""
+    if "global_scrolling_announcement" not in st.session_state:
+        try:
+            with open(ANNOUNCEMENT_CACHE_FILE, "r") as f:
+                st.session_state.global_scrolling_announcement = f.read()
+        except FileNotFoundError:
+            st.session_state.global_scrolling_announcement = "NOTICE: OFFICIAL DIGITAL LEDGER GATEWAY DEPLOYED FOR TRANSPARENT ACCOUNTABILITY."
+
+    if "global_registry" not in st.session_state:
+        st.session_state.global_registry = pd.DataFrame(columns=COLUMNS_STRUCTURE)
+    if "strategic_committee_registry" not in st.session_state:
+        st.session_state.strategic_committee_registry = pd.DataFrame(
+            columns=STRATEGIC_COMMITTEE_COLS
+        )
+    if "committee_double_dipping_ledger" not in st.session_state:
+        st.session_state.committee_double_dipping_ledger = {}
+    if "submitted_wards" not in st.session_state:
+        st.session_state.submitted_wards = {}
+    if "submitted_pus" not in st.session_state:
+        st.session_state.submitted_pus = {}
+    if "agent_field_registry" not in st.session_state:
+        st.session_state.agent_field_registry = pd.DataFrame(
+            columns=LITIGATION_AGENT_COLS
+        )
+    if "radar_threat" not in st.session_state:
+        st.session_state.radar_threat = False
+    if "threat_msg" not in st.session_state:
+        st.session_state.threat_msg = ""
+    if "authenticated_committee" not in st.session_state:
+        st.session_state.authenticated_committee = None

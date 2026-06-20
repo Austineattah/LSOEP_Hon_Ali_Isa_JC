@@ -3,7 +3,7 @@ import streamlit as st
 
 def apply_styling():
     st.set_page_config(
-        page_title="LSOEP TITAN GOMBE | HON. ALI ISA JC PhD HUB",
+        page_title="LSOEP TITAN GOMBE | HON. ALI ISA JC, PhD HUB",
         page_icon="🏛️",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -12,6 +12,15 @@ def apply_styling():
     st.markdown(
         """
     <style>
+    /* Hide Streamlit hamburger menu and footer for clean, secure production view */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* Correct PhD Casing */
+    .phd-text {
+        text-transform: none !important;
+    }
+
     [data-testid="stSidebar"] { 
         background-color: #030f21 !important; 
         border-right: 4px solid #8B0000 !important;
@@ -35,12 +44,13 @@ def apply_styling():
         border-radius: 10px !important; color: #FFFFFF !important; transition: all 0.3s ease;
         text-transform: uppercase; letter-spacing: 1px;
     }
-    
-    button[key="btn_skill"] { background: linear-gradient(90deg, #00B4DB 0%, #0083B0 100%) !important; }
-    button[key="btn_sch"] { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%) !important; }
-    button[key="btn_pal"] { background: linear-gradient(90deg, #2e8b57 0%, #38ef7d 100%) !important; }
-    button[key="btn_cv"] { background: linear-gradient(90deg, #8E2DE2 0%, #4A00E0 100%) !important; }
-    button[key="btn_cmd"] { background: #0b1e36 !important; border: 2px solid #00E5FF !important; }
+
+    button[key="nav_btn_bills"] { background: linear-gradient(90deg, #D4AF37 0%, #B48811 100%) !important; }
+    button[key="nav_btn_skill"] { background: linear-gradient(90deg, #00B4DB 0%, #0083B0 100%) !important; }
+    button[key="nav_btn_sch"] { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%) !important; }
+    button[key="nav_btn_pal"] { background: linear-gradient(90deg, #2e8b57 0%, #38ef7d 100%) !important; }
+    button[key="nav_btn_cv"] { background: linear-gradient(90deg, #8E2DE2 0%, #4A00E0 100%) !important; }
+    button[key="nav_btn_cun_redirect"] { background: #0b1e36 !important; border: 2px solid #00E5FF !important; }
 
     @keyframes master_chroma_flow {
         0% { border-color: #FFD700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); background-position: 0% 50%; }
@@ -54,7 +64,6 @@ def apply_styling():
         100% { background-color: #FF0000; color: #FFFFFF; box-shadow: 0 0 20px #FF0000; }
     }
 
-    /* ENLARGED EXTRA-DIMENSION ANIMATED HIGH-AESTHETIC PORTAL CONTAINER */
     .unified-command-vault {
         display: flex !important;
         flex-direction: row !important;
@@ -76,7 +85,6 @@ def apply_styling():
         transition: all 0.5s ease-in-out;
     }
 
-    /* ENLARGED COMPONENT CONTAINER CELLS */
     .mace-vault-shield {
         flex-shrink: 0 !important;
         display: flex !important;
@@ -121,11 +129,10 @@ def apply_styling():
         padding: 0 20px !important;
     }
 
-    /* INTEGRATED FORCEFUL TYPOGRAPHY REDUCTION FOR VISUAL AUTHENTICITY */
     .vault-text-block h1 {
         color: #FFFF00 !important;
         margin: 0 !important;
-        font-size: 1.95rem !important; /* Forcefully scaled down from 2.8rem to guarantee container clearance */
+        font-size: 1.95rem !important;
         font-weight: 950 !important;
         letter-spacing: 1.5px !important;
         text-transform: uppercase !important;
@@ -136,7 +143,7 @@ def apply_styling():
     .vault-text-block .sub-title {
         color: #FFFFFF !important;
         margin: 6px 0 0 0 !important;
-        font-size: 1.05rem !important; /* Scaled down from 1.4rem to prevent column blowout */
+        font-size: 1.05rem !important;
         font-weight: 800 !important;
         letter-spacing: 1px !important;
         text-transform: uppercase !important;
@@ -147,7 +154,7 @@ def apply_styling():
     .vault-text-block .geo-stamp {
         color: #00E5FF !important;
         margin: 6px 0 0 0 !important;
-        font-size: 1.25rem !important; /* Kept prominent but highly tracked to prevent container overspill */
+        font-size: 1.25rem !important;
         font-weight: 900 !important;
         letter-spacing: 2px !important;
         text-transform: uppercase !important;
@@ -196,6 +203,22 @@ def apply_styling():
     .slip-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: bold; }
     
     .stTextInput label p { color: #00E5FF !important; font-weight: 700 !important; }
+
+    .beyond-rhetoric-header {
+        background: linear-gradient(135deg, #0D243E, #040F1A);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 6px solid #D4AF37;
+        margin-bottom: 20px;
+    }
+    .beyond-title {
+        color: #D4AF37;
+        font-size: 1.8rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
     </style>
     """,
         unsafe_allow_html=True,
