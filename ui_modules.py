@@ -64,6 +64,38 @@ def render_marquee_header():
     )
 
 
+def render_hero_banner():
+    """Lightweight Dashboard Overview banner — reuses the marquee header component."""
+    render_marquee_header()
+
+
+def render_quick_stats():
+    """Lightweight Dashboard Overview KPI strip — cheap len() lookups only,
+    no heavy dataframe scans, by design (keeps the Dashboard Overview page fast)."""
+    st.markdown("### 📊 Quick System Snapshot")
+
+    registry_df = st.session_state.get("global_registry")
+    committee_df = st.session_state.get("strategic_committee_registry")
+    submitted_wards = st.session_state.get("submitted_wards", {})
+    submitted_pus = st.session_state.get("submitted_pus", {})
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(
+        "Constituent Registrations", len(registry_df) if registry_df is not None else 0
+    )
+    c2.metric(
+        "Strategic Committee Submissions",
+        len(committee_df) if committee_df is not None else 0,
+    )
+    c3.metric("Wards Reported", len(submitted_wards))
+    c4.metric("Polling Units Reported", len(submitted_pus))
+
+    if st.session_state.get("radar_threat", False):
+        st.error(f"🚨 Active fraud alert: {st.session_state.get('threat_msg', '')}")
+    else:
+        st.success("✅ No active anti-fraud alerts.")
+
+
 def render_module_download_trigger(data_source, filename_prefix, unique_key):
     """Generates an immediate CSV data export object wrapper for active logs dataframes."""
     try:
