@@ -24,7 +24,7 @@ from panels import (
     agent_panel,
     main_dashboard,
     strategic_committees_panel,
-    render_beyond_rhetoric_panel,
+    render_project_verifications,
     render_skill_form,
     render_scholarship_form,
     render_cv_vault,
@@ -40,7 +40,7 @@ initialize_system_states()
 app_tabs = st.tabs(
     [
         "Gateway Terminal Portal",
-        "Beyond Rhetorics Project",
+        "Project Verification",
         "Module 13: Strategic Committees",
         "Polling Unit Agent Hub",
         "Ward Collation Officer Hub",
@@ -128,7 +128,7 @@ with app_tabs[0]:
         render_palliative_form()
 
 with app_tabs[1]:
-    render_beyond_rhetoric_panel()
+    render_project_verifications()
 with app_tabs[2]:
     strategic_committees_panel()
 with app_tabs[3]:

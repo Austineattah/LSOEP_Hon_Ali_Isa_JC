@@ -561,7 +561,6 @@ def agent_panel():
 
     if st.session_state.agt_slip_preview is not None:
         a_data = st.session_state.agt_slip_preview
-        # This part was incomplete in the original, so we'll construct a proper preview
         st.markdown(
             f"""
             <div class="printable-slip-box">
@@ -645,7 +644,6 @@ def main_dashboard(conn):
         )
         if st.button("Update Announcement", key="update_marquee_btn"):
             st.session_state.global_scrolling_announcement = new_announcement
-            # PERSISTENCE: Write the new announcement to the cache file
             try:
                 with open(ANNOUNCEMENT_CACHE_FILE, "w") as f:
                     f.write(new_announcement)
@@ -711,91 +709,68 @@ def main_dashboard(conn):
         st.write("Time-series analysis of submissions will be visualized here.")
 
 
-def render_beyond_rhetoric_panel():
+def render_project_verifications():
+    """
+    Renders the 'Beyond Rhetorics' Verification Hub panel.
+    Displays the compressed project verification documents sequentially.
+    """
     st.markdown(
-        """
-    <div class="beyond-rhetoric-header">
-        <div class="beyond-title">🏛️ BEYOND RHETORIC PROJECT</div>
-        <div style="color: #8892B0; font-size: 1.1rem; font-style: italic;">
-            Official Verified Constituency Ledger for Infrastructure, Healthcare, and Social Interventions
-        </div>
-    </div>
-    """,
+        "<h2 style='color:#D4AF37;'>🦅 BEYOND RHETORICS: PROJECT VERIFICATION HUB</h2>",
         unsafe_allow_html=True,
     )
-    project_registry = {
-        "Project Alpha": {
-            "category": "Infrastructure",
-            "ward": "Balanga North",
-            "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/main/1_compressed.pdf",
-        },
-        "Project Beta": {
-            "category": "Healthcare Support",
-            "ward": "Billiri Central",
-            "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/main/2_compressed.pdf",
-        },
-        "Project Gamma": {
-            "category": "Education Infrastructure",
-            "ward": "Billiri North",
-            "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/main/3_compressed.pdf",
-        },
-        "Project Delta": {
-            "category": "Agricultural Support",
-            "ward": "Tal Ward",
-            "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/main/4_compressed.pdf",
-        },
-        "Project Epsilon": {
-            "category": "Water and Sanitation",
-            "ward": "Gelengu Ward",
-            "status": "100% Completed",
-            "url": "https://raw.githubusercontent.com/Austineattah/LSOEP_Media_Vault/main/5_compressed.pdf",
-        },
-    }
-    if "active_project" not in st.session_state:
-        st.session_state.active_project = list(project_registry.keys())[0]
+    st.write(
+        "Cross-examining performance metrics with verifiable ground-truth evidence."
+    )
 
-    col_registry, col_viewer = st.columns([2, 3])
-    with col_registry:
-        st.markdown(
-            "<h4 style='color:#D4AF37;'>📋 Select Project to Inspect</h4>",
-            unsafe_allow_html=True,
-        )
-        for proj_name, details in project_registry.items():
-            with st.container(border=True):
-                if st.button(
-                    proj_name, key=f"btn_{proj_name}", use_container_width=True
-                ):
-                    st.session_state.active_project = proj_name
-                    st.rerun()
-                st.caption(
-                    f"📍 {details['ward']} | 🏷️ {details['category']} | `🟢 {details['status']}`"
-                )
+    # Path configuration - looking into your media folder
+    media_dir = "MEDIA MEDIA MEDIA"
 
-    with col_viewer:
-        selected = st.session_state.active_project
-        pdf_url = project_registry[selected]["url"]
-        st.markdown(
-            f"### 🔍 Live Verification Ledger: <span style='color:#D4AF37;'>{selected}</span>",
-            unsafe_allow_html=True,
-        )
-        st.write("---")
-        try:
-            with st.spinner("🔄 Compiling Document Visual Canvas..."):
-                response = requests.get(pdf_url, stream=True, timeout=10)
-                response.raise_for_status()
-                base64_pdf = base64.b64encode(response.content).decode("utf-8")
-                st.markdown(
-                    f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="750"></iframe>',
-                    unsafe_allow_html=True,
+    if not os.path.exists(media_dir):
+        # Fallback check if it's named lowercase or nested
+        media_dir = "media"
+
+    if os.path.exists(media_dir):
+        # File mapping matching your uploaded repository files
+        files_to_render = [
+            ("Cover Page Document", "Cover_compressed.pdf"),
+            ("Project Verification Batch 1", "1_compressed.pdf"),
+            ("Project Verification Batch 2", "2_compressed.pdf"),
+            ("Project Verification Batch 3", "3_compressed.pdf"),
+            ("Project Verification Batch 4", "4_compressed.pdf"),
+            ("Project Verification Batch 5", "5_compressed.pdf"),
+            ("Project Verification Batch 6", "6_compressed.pdf"),
+        ]
+
+        for title, filename in files_to_render:
+            full_path = os.path.join(media_dir, filename)
+
+            if os.path.exists(full_path):
+                with st.expander(f"📄 View {title} ({filename})", expanded=False):
+                    with open(full_path, "rb") as f:
+                        pdf_bytes = f.read()
+
+                    # Displaying the PDF securely in an iframe container
+                    st.download_button(
+                        label=f"📥 Download {filename}",
+                        data=pdf_bytes,
+                        file_name=filename,
+                        mime="application/pdf",
+                        key=f"dl_{filename}",
+                    )
+
+                    # Embed target for immediate viewing
+                    # Use a dynamic import for base64 to ensure it's available
+                    b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+                    pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="700" type="application/pdf"></iframe>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
+            else:
+                st.warning(
+                    f"⚠️ Tracked file layout expected but missing local path: {filename}"
                 )
-        except (requests.exceptions.RequestException, Exception) as e:
-            st.error(
-                f"Failed to load PDF ledger for {selected}. Please check the URL and your connection."
-            )
+    else:
+        st.error(
+            "🚨 The media directory containing your compressed PDFs could not be verified locally. Please ensure the media folder is positioned inside your project layout."
+        )
 
 
 def strategic_committees_panel():
@@ -805,7 +780,6 @@ def strategic_committees_panel():
         unsafe_allow_html=True,
     )
 
-    # --- LAYER 1: GENERAL PASSWORD ---
     if "module_13_unlocked" not in st.session_state:
         st.session_state.module_13_unlocked = False
 
@@ -822,7 +796,6 @@ def strategic_committees_panel():
                     st.error("🛑 ACCESS REJECTED: General passkey signature mismatch.")
         return
 
-    # --- LAYER 2: INDIVIDUAL COMMITTEE PASSWORD ---
     st.success(
         "✅ General Access Granted. Please select your committee and enter its specific passkey."
     )
@@ -835,22 +808,26 @@ def strategic_committees_panel():
     )
 
     if selected_committee:
-        # If the committee is already authenticated, show the registration form
         if st.session_state.authenticated_committee == selected_committee:
             st.markdown(f"#### 📋 Member Registration for: {selected_committee}")
             with st.form(key=f"committee_form_{selected_committee.replace(' ', '_')}"):
                 c1, c2 = st.columns(2)
                 with c1:
-                    first_name = st.text_input("First Name")
-                    surname = st.text_input("Surname")
-                    contact_number = st.text_input("Contact Number")
-                    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-                    nin_number = st.text_input("NIN Number")
-                    voters_card_number = st.text_input("Voters Card Number")
+                    first_name, surname = st.text_input("First Name"), st.text_input(
+                        "Surname"
+                    )
+                    contact_number, gender = st.text_input(
+                        "Contact Number"
+                    ), st.selectbox("Gender", ["Male", "Female", "Other"])
+                    nin_number, voters_card_number = st.text_input(
+                        "NIN Number"
+                    ), st.text_input("Voters Card Number")
                 with c2:
-                    account_number = st.text_input("Account Number")
-                    account_name = st.text_input("Account Name")
-                    bank = st.text_input("Bank")
+                    account_number, account_name, bank = (
+                        st.text_input("Account Number"),
+                        st.text_input("Account Name"),
+                        st.text_input("Bank"),
+                    )
                     lga_raw = st.selectbox(
                         "LGA",
                         list(LGA_WARD_DATA.keys()),
@@ -872,11 +849,9 @@ def strategic_committees_panel():
                         [
                             first_name,
                             surname,
-                            contact_number,
                             nin_number,
                             voters_card_number,
                             account_number,
-                            account_name,
                             bank,
                             nin_upload,
                             picture_capture,
@@ -937,8 +912,6 @@ def strategic_committees_panel():
                 )
             else:
                 st.info("No members registered for this committee yet.")
-
-        # If not authenticated, show the password prompt for the specific committee
         else:
             with st.form(key=f"login_form_{selected_committee.replace(' ', '_')}"):
                 password = st.text_input("Enter Committee Passkey:", type="password")
