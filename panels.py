@@ -709,6 +709,15 @@ def main_dashboard(conn):
         st.write("Time-series analysis of submissions will be visualized here.")
 
 
+@st.cache_data
+def load_pdf_bytes(file_path):
+    """Cached PDF byte loader — avoids re-reading the same file from disk
+    on every Streamlit rerun/interaction. Cache key is the file_path string;
+    Streamlit invalidates automatically if the underlying file changes."""
+    with open(file_path, "rb") as f:
+        return f.read()
+
+
 def render_project_verifications():
     """
     Renders the 'Beyond Rhetorics' Verification Hub panel.
@@ -746,8 +755,9 @@ def render_project_verifications():
 
             if os.path.exists(full_path):
                 with st.expander(f"📄 View {title} ({filename})", expanded=False):
-                    with open(full_path, "rb") as f:
-                        pdf_bytes = f.read()
+                    # Cached read — file is only loaded from disk once per
+                    # session per unique path, not on every rerun.
+                    pdf_bytes = load_pdf_bytes(full_path)
 
                     # Displaying the PDF securely in an iframe container
                     st.download_button(
@@ -759,7 +769,6 @@ def render_project_verifications():
                     )
 
                     # Embed target for immediate viewing
-                    # Use a dynamic import for base64 to ensure it's available
                     b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
                     pdf_display = f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="700" type="application/pdf"></iframe>'
                     st.markdown(pdf_display, unsafe_allow_html=True)
