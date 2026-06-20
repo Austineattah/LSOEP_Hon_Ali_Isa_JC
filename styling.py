@@ -1,14 +1,10 @@
 import streamlit as st
 
 
-def apply_styling():
-    st.set_page_config(
-        page_title="LSOEP TITAN GOMBE | HON. ALI ISA JC, PhD HUB",
-        page_icon="🏛️",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
-
+def inject_custom_css():
+    """Injects the global CSS block only — does NOT call st.set_page_config().
+    main.py's lazy-loading router calls st.set_page_config() itself, exactly
+    once, as the very first Streamlit command, then calls this function."""
     st.markdown(
         """
     <style>
@@ -223,3 +219,16 @@ def apply_styling():
     """,
         unsafe_allow_html=True,
     )
+
+
+def apply_styling():
+    """Backward-compatible wrapper: sets page config AND injects CSS in one call.
+    Kept for any code path still calling apply_styling() instead of the new
+    split set_page_config() + inject_custom_css() pattern used in main.py."""
+    st.set_page_config(
+        page_title="LSOEP TITAN GOMBE | HON. ALI ISA JC, PhD HUB",
+        page_icon="🏛️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    inject_custom_css()
