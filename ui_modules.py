@@ -50,16 +50,21 @@ def render_marquee_header():
         unsafe_allow_html=True,
     )
 
+    # Fetch dynamic session announcements or fall back to default institutional marquee text
     announcement_text = st.session_state.get(
-        "global_scrolling_announcement", "Welcome."
+        "global_scrolling_announcement",
+        "🦅 LEGISLATIVE STRATEGIC OUTREACH PORTAL • HON. ALI ISA JC • DELIVERING VERIFIABLE EXCELLENCE",
     )
 
+    # Replaced old marquee markup with your fully integrated modern CSS block structure
     st.markdown(
-        f"""<div style="margin-top:15px; background:linear-gradient(180deg, #061a33 0%, #020b17 100%); padding:8px; border-radius:8px;">
-          <marquee scrollamount="4" style="color:#FFFFFF; font-weight:800; font-size:16px; letter-spacing:1.5px; font-family:sans-serif;">
-            {announcement_text}
-          </marquee>
-        </div>""",
+        f"""
+        <div style="background-color: #020C1B; padding: 10px; border-radius: 5px; margin-top: 15px; margin-bottom: 20px;">
+            <marquee behavior="scroll" direction="left" scrollamount="4" style="color: #D4AF37; font-weight: bold; font-size: 16px; letter-spacing: 1.5px; font-family: sans-serif;">
+                {announcement_text}
+            </marquee>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
