@@ -60,6 +60,47 @@ def inject_custom_css():
         100% { background-color: #FF0000; color: #FFFFFF; box-shadow: 0 0 20px #FF0000; }
     }
 
+    @keyframes swing {
+        20% {
+            transform: rotate3d(0, 0, 1, 15deg);
+        }
+        40% {
+            transform: rotate3d(0, 0, 1, -10deg);
+        }
+        60% {
+            transform: rotate3d(0, 0, 1, 5deg);
+        }
+        80% {
+            transform: rotate3d(0, 0, 1, -5deg);
+        }
+        100% {
+            transform: rotate3d(0, 0, 1, 0deg);
+        }
+    }
+
+    .swing-in {
+        transform-origin: top center;
+        animation: swing 1s ease-out;
+    }
+
+    @keyframes mace-swing-anim {
+        0% { transform: rotate(-8deg); }
+        50% { transform: rotate(8deg); }
+        100% { transform: rotate(-8deg); }
+    }
+
+    @keyframes acrobatic-text {
+        0% { transform: scale(1) rotate(0deg); color: #D4AF37; }
+        25% { transform: scale(1.05) rotate(-3deg); color: #FFFFFF; }
+        50% { transform: scale(1) rotate(0deg); color: #D4AF37; }
+        75% { transform: scale(1.05) rotate(3deg); color: #FFFFFF; }
+        100% { transform: scale(1) rotate(0deg); color: #D4AF37; }
+    }
+
+    .acrobatic-heading {
+        animation: acrobatic-text 4s ease-in-out infinite;
+    }
+
     .unified-command-vault {
         display: flex !important;
         flex-direction: row !important;
@@ -98,6 +139,8 @@ def inject_custom_css():
         width: 90% !important; 
         object-fit: contain !important; 
         filter: drop-shadow(0px 0px 20px rgba(255, 215, 0, 0.85)) contrast(1.4) brightness(1.1);
+        transform-origin: bottom center;
+        animation: mace-swing-anim 3s ease-in-out infinite;
     }
 
     .photo-vault-shield {
@@ -128,7 +171,7 @@ def inject_custom_css():
     .vault-text-block h1 {
         color: #FFFF00 !important;
         margin: 0 !important;
-        font-size: 1.95rem !important;
+        font-size: 2.2rem !important;
         font-weight: 950 !important;
         letter-spacing: 1.5px !important;
         text-transform: uppercase !important;
@@ -139,7 +182,7 @@ def inject_custom_css():
     .vault-text-block .sub-title {
         color: #FFFFFF !important;
         margin: 6px 0 0 0 !important;
-        font-size: 1.05rem !important;
+        font-size: 1.2rem !important;
         font-weight: 800 !important;
         letter-spacing: 1px !important;
         text-transform: uppercase !important;
@@ -150,7 +193,7 @@ def inject_custom_css():
     .vault-text-block .geo-stamp {
         color: #00E5FF !important;
         margin: 6px 0 0 0 !important;
-        font-size: 1.25rem !important;
+        font-size: 1.4rem !important;
         font-weight: 900 !important;
         letter-spacing: 2px !important;
         text-transform: uppercase !important;
@@ -214,6 +257,58 @@ def inject_custom_css():
         text-transform: uppercase;
         letter-spacing: 1.5px;
         text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+
+    /* =====================================================================
+       📍 SIDEBAR & NAVIGATION DROPDOWN CUSTOM STYLING
+       Added for the sidebar selectbox-based navigation router in main.py
+       ===================================================================== */
+
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 2rem !important;
+        padding-left: 1.1rem !important;
+        padding-right: 1.1rem !important;
+        background-color: #020C1B !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #020C1B !important;
+        border-right: 1px solid rgba(212, 175, 55, 0.2) !important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        background-color: #0A192F !important;
+        border: 1px solid #D4AF37 !important;
+        border-radius: 8px !important;
+        color: #FFFFFF !important;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.3s ease-in-out;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus-within {
+        border-color: #FFFFFF !important;
+        box-shadow: 0px 4px 12px rgba(212, 175, 55, 0.4) !important;
+    }
+    div[data-testid="stSelectbox"] span {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        letter-spacing: 0.5px;
+    }
+    div[data-testid="stSelectbox"] svg {
+        fill: #D4AF37 !important;
+    }
+
+    /* =====================================================================
+       🏛️ GLOBAL TYPOGRAPHY CORRECTIONS
+       Note: h1/h2/h3 here are intentionally NOT !important so the more
+       specific .vault-text-block h1 rule above (which IS !important) keeps
+       full control over the hero banner's title styling and is unaffected.
+       ===================================================================== */
+    h1, h2, h3 {
+        color: #D4AF37;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        font-weight: 700;
+    }
+    p {
+        color: #F8F9FA;
     }
     </style>
     """,

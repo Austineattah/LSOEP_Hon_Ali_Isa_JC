@@ -27,10 +27,10 @@ def render_marquee_header():
     portrait_base64 = image_to_base64(portrait_path)
 
     mace_html = (
-        f'<img src="data:image/png;base64,{mace_base64}">' if mace_base64 else ""
+        f"""<img src="data:image/png;base64,{mace_base64}">""" if mace_base64 else ""
     )
     portrait_html = (
-        f'<img src="data:image/png;base64,{portrait_base64}">'
+        f"""<img src="data:image/png;base64,{portrait_base64}">"""
         if portrait_base64
         else ""
     )
@@ -60,7 +60,7 @@ def render_marquee_header():
     st.markdown(
         f"""
         <div style="background-color: #020C1B; padding: 10px; border-radius: 5px; margin-top: 15px; margin-bottom: 20px;">
-            <marquee behavior="scroll" direction="left" scrollamount="4" style="color: #D4AF37; font-weight: bold; font-size: 16px; letter-spacing: 1.5px; font-family: sans-serif;">
+            <marquee behavior="scroll" direction="left" scrollamount="4" style="color: #D4AF37; font-weight: bold; font-size: 18px; letter-spacing: 1.5px; font-family: sans-serif;">
                 {announcement_text}
             </marquee>
         </div>
@@ -77,7 +77,9 @@ def render_hero_banner():
 def render_quick_stats():
     """Lightweight Dashboard Overview KPI strip — cheap len() lookups only,
     no heavy dataframe scans, by design (keeps the Dashboard Overview page fast)."""
-    st.markdown("### 📊 Quick System Snapshot")
+    st.markdown(
+        """<h3 class="swing-in">📊 Quick System Snapshot</h3>""", unsafe_allow_html=True
+    )
 
     registry_df = st.session_state.get("global_registry")
     committee_df = st.session_state.get("strategic_committee_registry")
