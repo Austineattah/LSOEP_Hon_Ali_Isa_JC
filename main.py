@@ -75,6 +75,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
+# 🎨 RENDER INTERACTIVE CONTAINERIZED SIDEBAR MENU GRID
 st.sidebar.markdown(
     """
     <div style="
@@ -85,11 +86,11 @@ st.sidebar.markdown(
         margin-bottom: -15px;
         box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
     ">
-        <h3 class="acrobatic-heading" style="
+        <h3 style="
             color: #D4AF37; 
             font-family: 'Helvetica Neue', sans-serif; 
             letter-spacing: 1.5px; 
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 800;
             text-align: center;
             margin: 0 0 5px 0;
@@ -97,18 +98,23 @@ st.sidebar.markdown(
         ">
             🗺️ SYSTEM NAVIGATION
         </h3>
-        <p style="
-            color: #8892B0; 
-            font-size: 12px; 
-            text-align: center; 
-            margin: 0;
+        <div style="
+            text-align: center;
+            color: #00E5FF;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            animation: pulse_click 1.5s infinite ease-in-out;
+            margin-top: 8px;
+            cursor: pointer;
         ">
-            Select an institutional core command asset
-        </p>
+            ⚡ CLICK CONTAINER BELOW TO SCROLL & SELECT <span style="font-size: 1.3em;">👇👇</span>
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
 
 # Render the Interactive Selector Component Directly Inside the Sidebar Flow
 selected_tab = st.sidebar.selectbox(

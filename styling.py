@@ -101,6 +101,17 @@ def inject_custom_css():
         animation: acrobatic-text 4s ease-in-out infinite;
     }
 
+    @keyframes pulse_click {
+        0% { opacity: 0.6; transform: scale(0.98); }
+        50% { opacity: 1; transform: scale(1.02); color: #FFF; }
+        100% { opacity: 0.6; transform: scale(0.98); }
+    }
+
+    @keyframes flash-glow {
+        0%, 100% { color: #D4AF37; text-shadow: 0 0 10px #D4AF37, 0 0 20px #D4AF37; }
+        50% { color: #FFFFFF; text-shadow: 0 0 20px #FFFFFF, 0 0 30px #FFFFFF; }
+    }
+
     .unified-command-vault {
         display: flex !important;
         flex-direction: row !important;
@@ -289,8 +300,13 @@ def inject_custom_css():
     div[data-testid="stSelectbox"] span {
         color: #FFFFFF !important;
         font-weight: 600 !important;
-        font-size: 14px !important;
+        font-size: 18px !important;
         letter-spacing: 0.5px;
+    }
+    div[data-testid="stSelectbox"] li:hover {
+        background-color: #D4AF37 !important;
+        color: #0A192F !important;
+        font-weight: 800 !important;
     }
     div[data-testid="stSelectbox"] svg {
         fill: #D4AF37 !important;

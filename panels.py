@@ -26,7 +26,7 @@ from ui_modules import (
 from utils import trigger_background_autosave
 
 # ==============================================================================
-# ALL PUBLIC-FACING FORMS (CORRECTED DEPENDENT DROPDOWNS)
+# ALL PUBLIC-FACING FORMS (FULL CODE RESTORED)
 # ==============================================================================
 
 
@@ -37,12 +37,6 @@ def render_skill_form():
     </div>""",
         unsafe_allow_html=True,
     )
-    # LGA dropdown moved outside the form to trigger a rerun on change.
-    klga_raw = st.selectbox(
-        "Your LGA", list(LGA_WARD_DATA.keys()), key="skill_lga_select"
-    )
-    klga_clean = klga_raw.upper().split()[0] if klga_raw else ""
-
     with st.form("skill_form_engine"):
         k1, k2 = st.columns(2)
         with k1:
@@ -68,10 +62,11 @@ def render_skill_form():
                 "Upload Profile NIN Slip Document Click", type=["pdf", "jpg", "png"]
             )
         with k2:
-            # Ward dropdown now gets correctly populated list.
-            kward = st.selectbox(
-                "Your Ward", LGA_WARD_DATA.get(klga_clean, []), key="skill_ward_select"
+            klga_raw = st.selectbox(
+                "Your LGA", list(LGA_WARD_DATA.keys()), key="skill_lga_select"
             )
+            klga_clean = klga_raw.upper().split()[0] if klga_raw else ""
+            kward = st.selectbox("Your Ward", LGA_WARD_DATA.get(klga_clean, []))
             vocation_list = [
                 "ICT & AI Core Programming",
                 "Solar Renewable Energy Engineering",
@@ -181,11 +176,6 @@ def render_scholarship_form():
         """<h3 class="swing-in" style="text-transform: uppercase; font-size: 1.7rem;">🎓 Constituent Student Scholarship Application Portal</h3>""",
         unsafe_allow_html=True,
     )
-    slga_raw = st.selectbox(
-        "Your LGA", list(LGA_WARD_DATA.keys()), key="sch_lga_select"
-    )
-    slga_clean = slga_raw.upper().split()[0] if slga_raw else ""
-
     with st.form("scholarship_form_engine"):
         s1, s2 = st.columns(2)
         with s1:
@@ -211,9 +201,11 @@ def render_scholarship_form():
                     "Post-Graduate Stream",
                 ],
             )
-            sward = st.selectbox(
-                "Your Ward", LGA_WARD_DATA.get(slga_clean, []), key="sch_ward_select"
+            slga_raw = st.selectbox(
+                "Your LGA", list(LGA_WARD_DATA.keys()), key="sch_lga_select"
             )
+            slga_clean = slga_raw.upper().split()[0] if slga_raw else ""
+            sward = st.selectbox("Your Ward", LGA_WARD_DATA.get(slga_clean, []))
             sch_file_adm = st.file_uploader(
                 "Attach Official University Admission Letter Asset File",
                 type=["pdf", "jpg", "png"],
@@ -229,9 +221,6 @@ def render_cv_vault():
         """<h3 class="swing-in" style="text-transform: uppercase; font-size: 1.7rem;">🚀 Constituent Professional Talent Vault Engine</h3>""",
         unsafe_allow_html=True,
     )
-    vlga_raw = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()), key="cv_lga_select")
-    vlga_clean = vlga_raw.upper().split()[0] if vlga_raw else ""
-
     with st.form("cv_vault_engine"):
         v1, v2 = st.columns(2)
         with v1:
@@ -264,9 +253,11 @@ def render_cv_vault():
         with v2:
             cv_nin = st.text_input("Your NIN number")
             cv_phone = st.text_input("Applicant Contact Number")
-            vward = st.selectbox(
-                "Your Ward", LGA_WARD_DATA.get(vlga_clean, []), key="cv_ward_select"
+            vlga_raw = st.selectbox(
+                "Your LGA", list(LGA_WARD_DATA.keys()), key="cv_lga_select"
             )
+            vlga_clean = vlga_raw.upper().split()[0] if vlga_raw else ""
+            vward = st.selectbox("Your Ward", LGA_WARD_DATA.get(vlga_clean, []))
         cv_summary = st.text_area(
             "Summary Matrix of Functional Career Experience Vectors"
         )
@@ -282,17 +273,14 @@ def render_cun_trigger():
         """<h3 class="swing-in" style="text-transform: uppercase; font-size: 1.7rem;">🚨 Community Urgent Need Field Deficit Report Gateway</h3>""",
         unsafe_allow_html=True,
     )
-    clga_raw = st.selectbox(
-        "Affected LGA", list(LGA_WARD_DATA.keys()), key="cun_lga_select"
-    )
-    clga_clean = clga_raw.upper().split()[0] if clga_raw else ""
-
     with st.form("cun_form_engine"):
         cun_member = st.text_input("Reporting Community Member")
         cun_phone = st.text_input("Applicant Contact Number")
-        cward = st.selectbox(
-            "Affected Ward", LGA_WARD_DATA.get(clga_clean, []), key="cun_ward_select"
+        clga_raw = st.selectbox(
+            "Affected LGA", list(LGA_WARD_DATA.keys()), key="cun_lga_select"
         )
+        clga_clean = clga_raw.upper().split()[0] if clga_raw else ""
+        cward = st.selectbox("Affected Ward", LGA_WARD_DATA.get(clga_clean, []))
         cun_area = st.selectbox(
             "Area of Urgent Attention",
             [
@@ -320,11 +308,6 @@ def render_palliative_form():
         """<h3 class="swing-in" style="text-transform: uppercase; font-size: 1.7rem;">📦 Constituent Palliative Enrollment Registry</h3>""",
         unsafe_allow_html=True,
     )
-    plga_raw = st.selectbox(
-        "Your LGA", list(LGA_WARD_DATA.keys()), key="pal_lga_select"
-    )
-    plga_clean = plga_raw.upper().split()[0] if plga_raw else ""
-
     with st.form("palliative_form_engine"):
         p1, p2 = st.columns(2)
         with p1:
@@ -346,9 +329,11 @@ def render_palliative_form():
             )
         with p2:
             p_phone = st.text_input("Applicant Contact Number")
-            pward = st.selectbox(
-                "Your Ward", LGA_WARD_DATA.get(plga_clean, []), key="pal_ward_select"
+            plga_raw = st.selectbox(
+                "Your LGA", list(LGA_WARD_DATA.keys()), key="pal_lga_select"
             )
+            plga_clean = plga_raw.upper().split()[0] if plga_raw else ""
+            pward = st.selectbox("Your Ward", LGA_WARD_DATA.get(plga_clean, []))
             p_agro_select = st.selectbox(
                 "Specific Area of Agro Intervention and Others",
                 ["Fertilizer", "Seedlings", "Other Area of Likely Intervention"],
@@ -373,14 +358,14 @@ def render_palliative_form():
 
 
 # ==============================================================================
-# LEGISLATIVE PANEL
+# NEW: LEGISLATIVE PANEL
 # ==============================================================================
 def render_sponsored_bills_panel():
     """Displays a formatted list of sponsored bills and motions."""
     st.markdown(
         """<div class="beyond-rhetoric-header">
             <div class="beyond-title" style="font-size: 2rem;">📜 LEGISLATIVE FOOTPRINTS & MOTIONS</div>
-            <div style="color: #8892B0; font-size: 1.2rem; font-style: italic;">
+            <div style="color: #8892B0; font-size: 1.4rem; text-transform: uppercase; animation: flash-glow 2s infinite ease-in-out;">
                 A transparent record of legislative activities undertaken by Hon. Ali Isa JC, PhD.
             </div>
         </div>""",
@@ -406,7 +391,7 @@ def render_sponsored_bills_panel():
 
 
 # ==============================================================================
-# AUTHENTICATED PANELS
+# AUTHENTICATED PANELS (FULL CODE RESTORED)
 # ==============================================================================
 
 
@@ -416,11 +401,6 @@ def ward_collation_officer_panel():
         """<div class="supervisor-header swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🛡️ Ward Collation Officer Command: Form EC8A Logs</div>""",
         unsafe_allow_html=True,
     )
-    sup_lga_raw = st.selectbox(
-        "Your LGA", list(LGA_WARD_DATA.keys()), key="sup_lga_select"
-    )
-    sup_lga_clean = sup_lga_raw.upper().split()[0] if sup_lga_raw else ""
-
     if "sup_slip_preview" not in st.session_state:
         st.session_state.sup_slip_preview = None
 
@@ -429,15 +409,15 @@ def ward_collation_officer_panel():
         with c1:
             sup_name = st.text_input("Supervisor Full Name")
             sup_phone = st.text_input("Phone Number")
-            sup_ward = st.selectbox(
-                "Your Ward",
-                LGA_WARD_DATA.get(sup_lga_clean, []),
-                key="sup_ward_select",
-            )
+            sup_lga_raw = st.selectbox("Your LGA", list(LGA_WARD_DATA.keys()))
+            sup_lga_clean = sup_lga_raw.upper().split()[0]
+            sup_ward = st.selectbox("Your Ward", LGA_WARD_DATA.get(sup_lga_clean, []))
             bvas_serial = st.text_input("BVAS Serial Number")
             accredited_voters = st.number_input(
                 "Number of Accredited Voters", min_value=0
             )
+
+        ward_id = f"{sup_lga_clean}_{sup_ward}".replace(" ", "_").upper()
 
         with c2:
             st.markdown("**Votes Scored by Party**")
@@ -521,11 +501,6 @@ def agent_panel():
         """<h3 class="swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🗳️ POLLING UNIT AGENT: FIELD DATA TRANSFERS</h3>""",
         unsafe_allow_html=True,
     )
-    agt_lga_raw = st.selectbox(
-        "Your LGA", list(LGA_WARD_DATA.keys()), key="agent_lga_select"
-    )
-    agt_lga_clean = agt_lga_raw.upper().split()[0] if agt_lga_raw else ""
-
     if "agt_slip_preview" not in st.session_state:
         st.session_state.agt_slip_preview = None
 
@@ -534,6 +509,10 @@ def agent_panel():
         with a1:
             agt_name = st.text_input("Agent Full Operator Name")
             agt_phone = st.text_input("Agent Communication Contact Phone")
+            agt_lga_raw = st.selectbox(
+                "Your LGA", list(LGA_WARD_DATA.keys()), key="agent_lga_select"
+            )
+            agt_lga_clean = agt_lga_raw.upper().split()[0] if agt_lga_raw else ""
             agt_ward = st.selectbox(
                 "Your Ward",
                 LGA_WARD_DATA.get(agt_lga_clean, []),
@@ -549,6 +528,8 @@ def agent_panel():
             accredited_voters = st.number_input(
                 "Number of Accredited Voters", min_value=0, key="agent_accredited"
             )
+
+        pu_id = f"{agt_lga_clean}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
 
         with a2:
             st.markdown("**Votes Scored by Party**")
@@ -570,7 +551,6 @@ def agent_panel():
         submitted = st.form_submit_button("🔍 COMPREHENSIVE ENTRY EVALUATION")
 
     if submitted:
-        pu_id = f"{agt_lga_clean}_{agt_ward}_{agt_pu_num}".replace(" ", "_").upper()
         if not agt_name or not agt_phone or not agt_pu_num:
             st.error("🛑 FORM ERROR: Agent metadata must be completely specified.")
         elif pu_id != "" and pu_id in st.session_state.submitted_pus:
@@ -805,11 +785,6 @@ def render_project_verifications():
                         mime="application/pdf",
                         key=f"dl_{filename}",
                     )
-
-                    # Embed target for immediate viewing
-                    b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-                    pdf_display = f"""<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="700" type="application/pdf"></iframe>"""
-                    st.markdown(pdf_display, unsafe_allow_html=True)
             else:
                 st.warning(
                     f"⚠️ Tracked file layout expected but missing local path: {filename}"
@@ -856,13 +831,6 @@ def strategic_committees_panel():
 
     if selected_committee:
         if st.session_state.authenticated_committee == selected_committee:
-            lga_raw = st.selectbox(
-                "LGA",
-                list(LGA_WARD_DATA.keys()),
-                key=f"lga_comm_{selected_committee}",
-            )
-            lga_clean = lga_raw.upper().split()[0] if lga_raw else ""
-
             st.markdown(f"#### 📋 Member Registration for: {selected_committee}")
             with st.form(key=f"committee_form_{selected_committee.replace(' ', '_')}"):
                 c1, c2 = st.columns(2)
@@ -882,6 +850,12 @@ def strategic_committees_panel():
                         st.text_input("Account Name"),
                         st.text_input("Bank"),
                     )
+                    lga_raw = st.selectbox(
+                        "LGA",
+                        list(LGA_WARD_DATA.keys()),
+                        key=f"lga_comm_{selected_committee}",
+                    )
+                    lga_clean = lga_raw.upper().split()[0] if lga_raw else ""
                     ward = st.selectbox(
                         "Ward",
                         LGA_WARD_DATA.get(lga_clean, []),
