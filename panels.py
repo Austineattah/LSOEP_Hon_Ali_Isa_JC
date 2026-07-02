@@ -1169,3 +1169,5 @@ def render_vouching_form():
                 st.error("PLEASE FILL OUT ALL FIELDS BEFORE SUBMITTING.")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+# Hot-Reload Cache Invalidation Token: 2026-07-02-v2
