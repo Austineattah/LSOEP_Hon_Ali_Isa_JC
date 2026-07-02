@@ -1,7 +1,7 @@
 # ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - INTEGRATED MASTER ROUTER
 # Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
-# File: main.py (Optimized Lazy-Loading Framework Engine)
+# File: main.py (V43.0 - Hardened Initialization & Crash Fix)
 # ==============================================================================
 
 import sys
@@ -9,34 +9,35 @@ import asyncio
 import warnings
 import streamlit as st
 
+# --- 1. SUPER-EARLY STATE INITIALIZATION (CRITICAL CRASH PREVENTION) ---
+# This block runs before almost anything else to guarantee 'current_route'
+# exists on every single script run, preventing initialization crashes.
+if "current_route" not in st.session_state:
+    st.session_state.current_route = "HOME"
+
+# --- Now, import other project modules ---
 if sys.platform == "win32":
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from styling import inject_custom_css
 from ui_modules import render_hero_banner, render_marquee_header
+from registry import initialize_system_states, HON_TITLE
+import panels
 
-# 1. Initialize Page Config FIRST — must be the very first Streamlit command.
+# --- 2. PAGE CONFIG & STYLING ---
 st.set_page_config(
     page_title="LSOEP - Hon. Ali Isa JC Portal",
     page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# 2. Inject Styling Layers Exactly Once at Root Entry
 inject_custom_css()
 
-# 3. Core session state (lightweight — registry.py itself is small, this is cheap)
-from registry import initialize_system_states, HON_TITLE
-
+# --- 3. STANDARD INITIALIZATIONS ---
 initialize_system_states()
 
-# ==============================================================================
-# 🗺️ NAVIGATION SETUP & ALIGNMENT MATRIX
-# ==============================================================================
-
-# Precise 13-Module Ordering Hierarchy (Footprints Positioned First)
+# --- 4. NAVIGATION SETUP ---
 NAVIGATION_OPTIONS = [
     "🏛️ LEGISLATIVE FOOTPRINTS",
     "🛠️ SKILL VOCATION POOL",
@@ -45,180 +46,131 @@ NAVIGATION_OPTIONS = [
     "💡 CV & ARTISAN VAULT",
     "🚨 COMMUNITY URGENT NEED",
     "🏛️ BEYOND RHETORICS",
-    "🛡️ STRATEGIC COMMITTEES (MODULE 13)",
-    "🗳️ POLLING UNIT AGENT HUB",
-    "🛡️ WARD COLLATION OFFICER HUB",
-    "🔑 EXECUTIVE CONTROL ROOM",
+    "🗣️ SPEAK TO ME DIRECTLY",
+    "🛡️ STRATEGIC LEADERSHIP VOUCHING TIER",
 ]
+ADMIN_OPTIONS = {
+    "CONTROL_ROOM": "🔑 EXECUTIVE CONTROL ROOM",
+    "STRATEGIC_COMMITTEES": "🛡️ STRATEGIC COMMITTEES (MODULE 13)",
+    "AGENT_HUB": "🗳️ POLLING UNIT AGENT HUB",
+    "COLLATION_HUB": "🛡️ WARD COLLATION OFFICER HUB",
+}
 
-# Ensure System Tracks State Cleanly Without Resource Exhaustion
-if "current_route" not in st.session_state:
-    st.session_state.current_route = NAVIGATION_OPTIONS[0]
+# --- 5. SIDEBAR RENDERING ---
+st.sidebar.markdown(
+    f"""<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a>""",
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown("<hr>", unsafe_allow_html=True)
+st.sidebar.markdown(
+    "<h3 class='admin-header'>Admin Portals</h3>", unsafe_allow_html=True
+)
 
-# ==========================================
-# 🎨 RENDER CONTAINERIZED SIDEBAR MENU GRID
-# ==========================================
-if st.session_state.get("radar_threat", False):
-    st.sidebar.markdown(
-        f"""<div style="background-color:#FF4B4B; color:white; padding:10px; border-radius:4px; font-weight:bold; font-size:12px; margin-bottom:10px;">
-            🚨 SECURITY WARNING: ANTI-FRAUD RADAR MATCH<br>{st.session_state.get("threat_msg", "")}
-        </div>""",
+if st.sidebar.button(
+    ADMIN_OPTIONS["CONTROL_ROOM"], use_container_width=True, key="nav_btn_admin"
+):
+    st.session_state.current_route = ADMIN_OPTIONS["CONTROL_ROOM"]
+    st.rerun()
+if st.sidebar.button(
+    ADMIN_OPTIONS["STRATEGIC_COMMITTEES"],
+    use_container_width=True,
+    key="nav_btn_committee",
+):
+    st.session_state.current_route = ADMIN_OPTIONS["STRATEGIC_COMMITTEES"]
+    st.rerun()
+if st.sidebar.button(
+    ADMIN_OPTIONS["AGENT_HUB"], use_container_width=True, key="nav_btn_agent"
+):
+    st.session_state.current_route = ADMIN_OPTIONS["AGENT_HUB"]
+    st.rerun()
+if st.sidebar.button(
+    ADMIN_OPTIONS["COLLATION_HUB"], use_container_width=True, key="nav_btn_collation"
+):
+    st.session_state.current_route = ADMIN_OPTIONS["COLLATION_HUB"]
+    st.rerun()
+
+st.sidebar.caption("Engine Architecture: v43.0 | Hardened Router")
+
+# --- 6. GLOBAL MARQUEE & ROUTER ---
+render_marquee_header()
+selected_route = st.session_state.current_route
+
+if selected_route == "HOME":
+    render_hero_banner()
+    st.markdown(
+        "<h2 class='nav-title'>CONSTITUENCY ENGAGEMENT CHANNELS........</h2>",
         unsafe_allow_html=True,
     )
 
-st.sidebar.markdown(
-    f"""<a href="https://web.facebook.com/hon.isa.ali.jc/?_rdc=1&_rdr#" target="_blank" style="text-decoration:none;">
-    <div style="background-color:#0B3C5D; color:white; text-align:center; padding:8px; border-radius:4px; font-size:14px; font-weight:bold; margin-bottom:10px;">
-        🌐 {HON_TITLE} Official Facebook
-    </div>
-</a>""",
-    unsafe_allow_html=True,
-)
+    cols = st.columns(5)
+    for i, option in enumerate(NAVIGATION_OPTIONS):
+        if cols[i % len(cols)].button(
+            option, key=f"nav_card_{i}", use_container_width=True
+        ):
+            st.session_state.current_route = option
+            st.rerun()
+else:
+    if st.button(
+        "↩️ Return to Main Gateway", use_container_width=True, key="nav_btn_return"
+    ):
+        st.session_state.current_route = "HOME"
+        st.rerun()
+    st.markdown("<hr class='nav-divider'>", unsafe_allow_html=True)
 
-# 🎨 RENDER INTERACTIVE CONTAINERIZED SIDEBAR MENU GRID
-st.sidebar.markdown(
-    """
-    <div style="
-        background: linear-gradient(180deg, #0A192F 0%, #020C1B 100%);
-        border: 1px solid #D4AF37;
-        padding: 18px;
-        border-radius: 10px;
-        margin-bottom: -15px;
-        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
-    ">
-        <h3 style="
-            color: #D4AF37; 
-            font-family: 'Helvetica Neue', sans-serif; 
-            letter-spacing: 1.5px; 
-            font-size: 15px;
-            font-weight: 800;
-            text-align: center;
-            margin: 0 0 5px 0;
-            text-transform: uppercase;
-        ">
-            🗺️ SYSTEM NAVIGATION
-        </h3>
-        <div style="
-            text-align: center;
-            color: #00E5FF;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            animation: pulse_click 1.5s infinite ease-in-out;
-            margin-top: 8px;
-            cursor: pointer;
-        ">
-            ⚡ CLICK CONTAINER BELOW TO SCROLL & SELECT <span style="font-size: 1.3em;">👇👇</span>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    # --- Render Content Panels ---
+    if selected_route in [opt for opt in NAVIGATION_OPTIONS]:
+        if selected_route == "🏛️ LEGISLATIVE FOOTPRINTS":
+            panels.render_sponsored_bills_panel()
+        elif selected_route == "🛠️ SKILL VOCATION POOL":
+            panels.render_skill_form()
+        elif selected_route == "🎓 STUDENT SCHOLARSHIP/GRANT":
+            panels.render_scholarship_form()
+        elif selected_route == "📦 PALLIATIVE ENROLLMENT":
+            panels.render_palliative_form()
+        elif selected_route == "💡 CV & ARTISAN VAULT":
+            panels.render_cv_vault()
+        elif selected_route == "🚨 COMMUNITY URGENT NEED":
+            panels.render_cun_trigger()
+        elif selected_route == "🏛️ BEYOND RHETORICS":
+            panels.render_project_verifications()
+        elif selected_route == "🗣️ SPEAK TO ME DIRECTLY":
+            panels.render_speak_directly_panel()
+        elif selected_route == "🛡️ STRATEGIC LEADERSHIP VOUCHING TIER":
+            panels.render_vouching_form()
 
+    # --- Render Admin Panels ---
+    elif selected_route in ADMIN_OPTIONS.values():
+        if selected_route == ADMIN_OPTIONS["CONTROL_ROOM"]:
+            st.markdown("### 🔑 Executive Command System Authorization")
+            admin_key = st.text_input(
+                "Enter Command Hub Key:", type="password", key="admin_key"
+            )
+            if admin_key == "ali 2027":
+                panels.main_dashboard(conn=None)
+            elif admin_key:
+                st.error("🛑 SYSTEM ACCESS REJECTED")
 
-# Render the Interactive Selector Component Directly Inside the Sidebar Flow
-selected_tab = st.sidebar.selectbox(
-    label="Navigation Matrix Control",
-    options=NAVIGATION_OPTIONS,
-    index=NAVIGATION_OPTIONS.index(st.session_state.current_route),
-    label_visibility="collapsed",
-    key="portal_navigation_router_matrix",
-)
+        elif selected_route == ADMIN_OPTIONS["STRATEGIC_COMMITTEES"]:
+            panels.strategic_committees_panel()
 
-# Bind selection cleanly back to routing state
-st.session_state.current_route = selected_tab
+        elif selected_route == ADMIN_OPTIONS["AGENT_HUB"]:
+            st.markdown("### 🗳️ Polling Unit Agent Security Checkpoint")
+            agent_key = st.text_input(
+                "Enter Agent Authorization Key:", type="password", key="gate_agent_key"
+            )
+            if agent_key == "ali 2027":
+                panels.agent_panel()
+            elif agent_key:
+                st.error("🛑 ACCESS REJECTED: Invalid Agent Authorization Signature.")
 
-# Structural Breathing Space Padding
-st.sidebar.markdown("<div style='margin-bottom: 25px;'></div>", unsafe_allow_html=True)
-st.sidebar.caption("Engine Architecture: v38.0.0 | Gombe Node — Lazy-Load Router")
-
-# ==============================================================================
-# 🎛️ MEMORY-ISOLATED LAZY ROUTING MODULES
-# Each branch imports ONLY what it needs, exactly when it's selected.
-# ==============================================================================
-current = st.session_state.current_route
-
-# --- MODULE 1: LEGISLATIVE FOOTPRINTS (MASTER LANDING ENTRY) ---
-if current == "🏛️ LEGISLATIVE FOOTPRINTS":
-    from panels import render_sponsored_bills_panel
-
-    render_hero_banner()
-    render_sponsored_bills_panel()
-
-# --- MODULE 3: SKILL VOCATION POOL ---
-elif current == "🛠️ SKILL VOCATION POOL":
-    from panels import render_skill_form
-
-    render_marquee_header()
-    render_skill_form()
-
-# --- MODULE 4: STUDENT SCHOLARSHIP/GRANT ---
-elif current == "🎓 STUDENT SCHOLARSHIP/GRANT":
-    from panels import render_scholarship_form
-
-    render_marquee_header()
-    render_scholarship_form()
-
-# --- MODULE 5: PALLIATIVE ENROLLMENT ---
-elif current == "📦 PALLIATIVE ENROLLMENT":
-    from panels import render_palliative_form
-
-    render_marquee_header()
-    render_palliative_form()
-
-# --- MODULE 6: CV & ARTISAN VAULT ---
-elif current == "💡 CV & ARTISAN VAULT":
-    from panels import render_cv_vault
-
-    render_marquee_header()
-    render_cv_vault()
-
-# --- MODULE 7: COMMUNITY URGENT NEED ---
-elif current == "🚨 COMMUNITY URGENT NEED":
-    from panels import render_cun_trigger
-
-    render_marquee_header()
-    render_cun_trigger()
-
-# --- MODULE 9: BEYOND RHETORICS ---
-elif current == "🏛️ BEYOND RHETORICS":
-    import panels
-
-    st.title("Project Verification Hub")
-    panels.render_project_verifications()
-
-# --- MODULE 10: STRATEGIC COMMITTEES (MODULE 13) ---
-elif current == "🛡️ STRATEGIC COMMITTEES (MODULE 13)":
-    import panels
-
-    panels.strategic_committees_panel()
-
-# --- MODULE 11: POLLING UNIT AGENT HUB ---
-elif current == "🗳️ POLLING UNIT AGENT HUB":
-    import panels
-
-    panels.agent_panel()
-
-# --- MODULE 12: WARD COLLATION OFFICER HUB ---
-elif current == "🛡️ WARD COLLATION OFFICER HUB":
-    import panels
-
-    panels.ward_collation_officer_panel()
-
-# --- MODULE 13: EXECUTIVE CONTROL ROOM ---
-elif current == "🔑 EXECUTIVE CONTROL ROOM":
-    # 🚨 Hero Banner intentionally omitted here to prevent double card-like
-    # container rendering on the secure admin panels.
-    st.markdown("### 🔑 Executive Command System Authorization Security Checkpoint")
-    admin_key_input = st.text_input(
-        "Enter Command Hub Key to Unroll Operational Data Logs:",
-        type="password",
-        key="checkpoint_admin_key",
-    )
-    if admin_key_input == "ali 2027":
-        import panels
-
-        conn = None
-        panels.main_dashboard(conn)
-    elif admin_key_input:
-        st.error("🛑 SYSTEM ACCESS REJECTED: Command signature authorization mismatch.")
+        elif selected_route == ADMIN_OPTIONS["COLLATION_HUB"]:
+            st.markdown("### 🛡️ Ward Collation Command Security Checkpoint")
+            collation_key = st.text_input(
+                "Enter Collation Officer Key:",
+                type="password",
+                key="gate_collation_key",
+            )
+            if collation_key == "ali 2027":
+                panels.ward_collation_officer_panel()
+            elif collation_key:
+                st.error("🛑 ACCESS REJECTED: Invalid Collation Authority Signature.")

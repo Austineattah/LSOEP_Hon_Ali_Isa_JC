@@ -590,7 +590,7 @@ def agent_panel():
                 <div class="slip-row"><span>BVAS S/N:</span> <span>{a_data['BVAS_Serial_Number']}</span></div>
                 <div class="slip-row" style="color:red;"><span>APC:</span> <span>{a_data['APC_Votes']}</span></div>
                 <div class="slip-row" style="color:blue;"><span>NDC:</span> <span>{a_data['NDC_Votes']}</span></div>
-                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{a_data['PDP_Votes']}</span></div>
+                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{p_data['PDP_Votes']}</span></div>
                 <div class="slip-row" style="color:orange;"><span>ADC:</span> <span>{a_data['ADC_Votes']}</span></div>
             </div>
             """,
@@ -624,9 +624,30 @@ def main_dashboard(conn):
         """<h2 class="swing-in" style="font-size: 1.8rem; text-transform: uppercase;">🏛️ Executive Control Command Dashboard Portal Array</h2>""",
         unsafe_allow_html=True,
     )
+
+    # Custom CSS for the tabs to increase font size, change color, and set to uppercase
+    st.markdown(
+        """
+        <style>
+            button[data-baseweb="tab"] {
+                font-size: 1.2rem !important;
+                color: #D4AF37 !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+            }
+            button[data-baseweb="tab"][aria-selected="true"] {
+                color: white !important;
+                background-color: #0B3C5D !important;
+            }
+        </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
     tabs = st.tabs(
         [
             "📊 Master Registry Matrix",
+            "🗣️ Citizen Feedback",
             "📢 Admin Announcement Control",
             "⚖️ Database Audit Diagnostics",
             "🛡️ RADAR Deduplication Interceptor",
@@ -652,6 +673,34 @@ def main_dashboard(conn):
         render_institutional_purge_engine("t1_purge")
 
     with tabs[1]:
+        st.subheader("🗣️ Citizen Feedback Messages")
+        if (
+            "feedback_registry" not in st.session_state
+            or st.session_state.feedback_registry.empty
+        ):
+            st.info("There are currently no feedback messages.")
+            st.session_state.feedback_registry = pd.DataFrame(
+                columns=[
+                    "Timestamp",
+                    "First_Name",
+                    "Surname",
+                    "Gender",
+                    "LGA",
+                    "Ward",
+                    "WhatsApp",
+                    "Email",
+                    "Message",
+                ]
+            )
+        else:
+            st.dataframe(st.session_state.feedback_registry)
+            render_module_download_trigger(
+                st.session_state.feedback_registry,
+                "Feedback_Registry_Log",
+                "t_feedback_dl",
+            )
+
+    with tabs[2]:
         st.subheader("📢 Admin Announcement Control")
         current_announcement = st.session_state.get("global_scrolling_announcement", "")
         new_announcement = st.text_area(
@@ -672,7 +721,7 @@ def main_dashboard(conn):
                 st.error(f"Failed to save announcement: {e}")
             st.rerun()
 
-    with tabs[2]:
+    with tabs[3]:
         st.subheader("⚖️ Forensic Audit Database Query & Connection Diagnostic Stream")
         st.error("⚠️ Isolation Warning Layer: Supabase API Cloud Gateway locked.")
         if conn is not None:
@@ -684,45 +733,45 @@ def main_dashboard(conn):
             st.json(serializable_state)
         render_institutional_purge_engine("t3_purge")
 
-    with tabs[3]:
+    with tabs[4]:
         st.subheader(
             "🛡️ RADAR Multi-Intake Anti-Fraud Deduplication Interceptor Shield"
         )
         st.write("Anti-fraud logic is handled during form submissions.")
 
-    with tabs[4]:
+    with tabs[5]:
         st.subheader("🎓 Academic Grants Distribution Pools & Talent Demographics Hub")
         st.write(
             "Scholarship data will be analyzed and displayed here in future versions."
         )
 
-    with tabs[5]:
+    with tabs[6]:
         st.subheader("💎 Vantedge Strategic Influence Vectors & Demographics Scale")
         st.write("Community leader data will be visualized here.")
 
-    with tabs[6]:
+    with tabs[7]:
         st.subheader(
             "🗳️ Cross-National Multi-Tier Election Verification War Room Sync Arrays"
         )
         st.write("Election data analytics will be shown here.")
 
-    with tabs[7]:
+    with tabs[8]:
         st.subheader("📝 Ground Truth Form EC8A Audited Verification Schema")
         st.dataframe(pd.DataFrame(list(st.session_state.submitted_wards.values())))
 
-    with tabs[8]:
+    with tabs[9]:
         st.subheader("📂 Bulk Throughput Tunnel Sync")
         st.write("Bulk data upload features will be implemented here.")
 
-    with tabs[9]:
+    with tabs[10]:
         st.subheader("📜 Strategic Waiver Assignment Parameters Matrix Ledgers")
         st.write("Waiver and special consideration data will be logged here.")
 
-    with tabs[10]:
+    with tabs[11]:
         st.subheader("🚀 National Assembly Legislative Action Motion Tracking")
         st.dataframe(pd.DataFrame(SPONSORED_BILLS))
 
-    with tabs[11]:
+    with tabs[12]:
         st.subheader("📅 Long-Term Temporal Momentum Tracking Interface Matrix Trends")
         st.write("Time-series analysis of submissions will be visualized here.")
 
@@ -835,21 +884,17 @@ def strategic_committees_panel():
             with st.form(key=f"committee_form_{selected_committee.replace(' ', '_')}"):
                 c1, c2 = st.columns(2)
                 with c1:
-                    first_name, surname = st.text_input("First Name"), st.text_input(
-                        "Surname"
-                    )
-                    contact_number, gender = st.text_input(
-                        "Contact Number"
-                    ), st.selectbox("Gender", ["Male", "Female", "Other"])
-                    nin_number, voters_card_number = st.text_input(
-                        "NIN Number"
-                    ), st.text_input("Voters Card Number")
+                    first_name = st.text_input("First Name")
+                    surname = st.text_input("Surname")
+                    contact_number = st.text_input("Contact Number")
+                    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+                    nin_number = st.text_input("NIN Number")
+                    voters_card_number = st.text_input("Voters Card Number")
+
                 with c2:
-                    account_number, account_name, bank = (
-                        st.text_input("Account Number"),
-                        st.text_input("Account Name"),
-                        st.text_input("Bank"),
-                    )
+                    account_number = st.text_input("Account Number")
+                    account_name = st.text_input("Account Name")
+                    bank = st.text_input("Bank")
                     lga_raw = st.selectbox(
                         "LGA",
                         list(LGA_WARD_DATA.keys()),
@@ -864,7 +909,12 @@ def strategic_committees_panel():
                     nin_upload = st.file_uploader(
                         "Upload NIN Document", type=["pdf", "jpg", "png"]
                     )
-                    picture_capture = st.camera_input("Capture Picture")
+
+                # CORRECTED: Single camera input outside the columns
+                picture_capture = st.camera_input(
+                    "Capture Picture",
+                    key=f"camera_comm_{selected_committee.replace(' ', '_')}",
+                )
 
                 if st.form_submit_button("Submit Information"):
                     if not all(
@@ -948,3 +998,174 @@ def strategic_committees_panel():
                         st.error(
                             "🛑 ACCESS REJECTED: Passkey for this committee is incorrect."
                         )
+
+
+# ==============================================================================
+# 🗣️ CITIZEN DIRECT FEEDBACK CHANNEL PIPELINE MODULE
+# ==============================================================================
+def render_speak_directly_panel():
+    """
+    Renders the direct feedback submission pipeline for citizens.
+    Inputs are collected and will be displayed in the admin dashboard.
+    """
+    st.subheader("📬 Submit Direct Message to the Legislative Office")
+    st.write(
+        "Please fill out the official communications pipeline form below. Your feedback is valuable."
+    )
+
+    with st.form("citizen_direct_feedback_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            first_name = st.text_input("First Name *", placeholder="e.g., John")
+            surname = st.text_input("Surname *", placeholder="e.g., Doe")
+            gender = st.selectbox("Gender *", ["Male", "Female", "Other"])
+            lga_raw = st.selectbox(
+                "Local Government Area (LGA) *",
+                list(LGA_WARD_DATA.keys()),
+                key="feedback_lga",
+            )
+            lga_clean = lga_raw.upper().split()[0] if lga_raw else ""
+
+        with col2:
+            ward = st.selectbox(
+                "Residential Ward / Settlement Area *",
+                LGA_WARD_DATA.get(lga_clean, []),
+                key="feedback_ward",
+            )
+            whatsapp_contact = st.text_input(
+                "WhatsApp Contact Number (Optional)", placeholder="e.g., 08030000000"
+            )
+            email = st.text_input(
+                "Email Address (Optional)", placeholder="e.g., user@example.com"
+            )
+
+        message_body = st.text_area(
+            "Detailed Message Content *",
+            max_chars=1000,
+            placeholder="Type your message or inquiry directly to the Honourable here...",
+        )
+
+        submit_btn = st.form_submit_button("🔒 Transmit Secure Message")
+
+        if submit_btn:
+            if not (first_name and surname and message_body):
+                st.error(
+                    "🛑 SUBMISSION ERROR: Please provide your First Name, Surname, and a Message."
+                )
+            else:
+                # Initialize the feedback registry if it doesn't exist
+                if "feedback_registry" not in st.session_state:
+                    st.session_state.feedback_registry = pd.DataFrame(
+                        columns=[
+                            "Timestamp",
+                            "First_Name",
+                            "Surname",
+                            "Gender",
+                            "LGA",
+                            "Ward",
+                            "WhatsApp",
+                            "Email",
+                            "Message",
+                        ]
+                    )
+
+                # Create a new entry
+                new_feedback = {
+                    "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "First_Name": first_name,
+                    "Surname": surname,
+                    "Gender": gender,
+                    "LGA": lga_clean,
+                    "Ward": ward,
+                    "WhatsApp": whatsapp_contact,
+                    "Email": email,
+                    "Message": message_body,
+                }
+
+                # Add to the registry
+                st.session_state.feedback_registry = pd.concat(
+                    [st.session_state.feedback_registry, pd.DataFrame([new_feedback])],
+                    ignore_index=True,
+                )
+                trigger_background_autosave()
+
+                st.success(
+                    "✅ MESSAGE TRANSMITTED: Thank you for your feedback. It has been received by the Command Center."
+                )
+                st.balloons()
+
+
+# ==============================================================================
+# ✨ NEW: STRATEGIC LEADERSHIP VOUCHING TIER
+# ==============================================================================
+def render_vouching_form():
+    """
+    Renders the Strategic Leadership Vouching Tier interface.
+    This form allows trusted leaders to vouch for applicants in various programs.
+    """
+    st.markdown("<div class='vouching-form-container'>", unsafe_allow_html=True)
+
+    st.markdown(
+        "### 🛡️ STRATEGIC LEADERSHIP VOUCHING TIER INTERFACE FRAME (ANTI-FRAUD MATRIX)"
+    )
+    st.markdown("---")
+
+    # --- REFERENCE PROGRAM SELECTION ---
+    vouched_program = st.selectbox(
+        "SELECT PROGRAM TO VOUCH FOR:",
+        options=[
+            "",
+            "PALLIATIVE ENROLLMENT",
+            "STUDENT SCHOLARSHIP/GRANT",
+            "SKILL VOCATION POOL",
+            "CV/ARTISAN VAULT",
+        ],
+    )
+
+    if vouched_program:
+        st.markdown("#### VOUCHING LEADER'S DETAILS")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            leader_name = st.text_input("NAME OF LEADER")
+            contact_number = st.text_input("CONTACT NUMBER")
+            lga = st.text_input("LGA (LOCAL GOVERNMENT AREA)")
+            nin_slip = st.file_uploader(
+                "UPLOAD NIN SLIP (IMAGE OR PDF)", type=["jpg", "jpeg", "png", "pdf"]
+            )
+
+        with col2:
+            portfolio = st.text_input("PORTFOLIO IN THE COMMUNITY")
+            nin_number = st.text_input("NIN (NATIONAL IDENTIFICATION NUMBER)")
+            ward = st.text_input("WARD")
+            leader_face = st.camera_input("CLICK TO CAPTURE FACE OF VOUCHING LEADER")
+
+        description = st.text_area("DESCRIPTION OF NEED OR COMMENT")
+
+        st.markdown("---")
+
+        if st.button("SUBMIT VOUCHING FORM", use_container_width=True):
+            # Basic validation
+            if all(
+                [
+                    leader_name,
+                    portfolio,
+                    contact_number,
+                    nin_number,
+                    lga,
+                    ward,
+                    nin_slip,
+                    leader_face,
+                    description,
+                ]
+            ):
+                # In a real application, you would save this data to a database
+                # and the uploaded files (nin_slip, leader_face) to a storage service.
+                st.success(
+                    "VOUCHING FORM SUBMITTED SUCCESSFULLY! THANK YOU FOR YOUR LEADERSHIP."
+                )
+                st.balloons()
+            else:
+                st.error("PLEASE FILL OUT ALL FIELDS BEFORE SUBMITTING.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
