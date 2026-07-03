@@ -276,3 +276,5 @@ elif clean_selection == "🔑 EXECUTIVE CONTROL ROOM":
         panels.main_dashboard(conn)
     elif admin_key_input:
         st.error("🛑 SYSTEM ACCESS REJECTED: Command signature authorization mismatch.")
+
+# Production Rebuild Token: 2026-07-03-VMAX
