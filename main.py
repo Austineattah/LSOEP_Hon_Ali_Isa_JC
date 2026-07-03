@@ -1,7 +1,7 @@
 # ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - INTEGRATED MASTER ROUTER
 # Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
-# File: main.py (V43.0 - Hardened Initialization & Crash Fix)
+# File: main.py (V44.0 - Enhanced Gateway Layout & Button Adaptive Sizing)
 # ==============================================================================
 
 import sys
@@ -10,12 +10,9 @@ import warnings
 import streamlit as st
 
 # --- 1. SUPER-EARLY STATE INITIALIZATION (CRITICAL CRASH PREVENTION) ---
-# This block runs before almost anything else to guarantee 'current_route'
-# exists on every single script run, preventing initialization crashes.
 if "current_route" not in st.session_state:
     st.session_state.current_route = "HOME"
 
-# --- Now, import other project modules ---
 if sys.platform == "win32":
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -47,7 +44,7 @@ NAVIGATION_OPTIONS = [
     "🚨 COMMUNITY URGENT NEED",
     "🏛️ BEYOND RHETORICS",
     "🗣️ SPEAK TO ME DIRECTLY",
-    "🛡️ STRATEGIC LEADERSHIP VOUCHING TIER",
+    "🛡️ LOCAL LEADERSHIP VOUCHING",
 ]
 ADMIN_OPTIONS = {
     "CONTROL_ROOM": "🔑 EXECUTIVE CONTROL ROOM",
@@ -89,15 +86,49 @@ if st.sidebar.button(
     st.session_state.current_route = ADMIN_OPTIONS["COLLATION_HUB"]
     st.rerun()
 
-st.sidebar.caption("Engine Architecture: v43.0 | Hardened Router")
+st.sidebar.caption("Engine Architecture: v44.0 | Adaptive Layout Router")
 
-# --- 6. GLOBAL MARQUEE & ROUTER ---
+# --- 6. GLOBAL ROUTER ENGINE ---
 selected_route = st.session_state.current_route
 
 if selected_route == "HOME":
+    # Display the card-like header portrait container
     render_hero_banner()
+
+    # Injecting scrolling marquee right below the hero banner to create a spacing bridge
+    render_marquee_header()
+
     st.markdown(
-        "<h2 class='nav-title'>CONSTITUENCY ENGAGEMENT CHANNELS</h2>",
+        "<h2 class='nav-title' style='margin-top: 25px !important;'>CONSTITUENCY ENGAGEMENT CHANNELS</h2>",
+        unsafe_allow_html=True,
+    )
+
+    # 🎨 INJECT CRITICAL BUTTON HEIGHT OVERRIDES TO PREVENT BOX CLIPPING
+    st.markdown(
+        """
+        <style>
+            /* Direct targeting of Streamlit button base structures on the Gateway stage */
+            div.stButton > button {
+                height: auto !important;
+                min-height: 80px !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                padding: 12px 10px !important;
+                line-height: 1.3 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+            /* Ensure the content boxes don't truncate text grids with ellipsis */
+            div.stButton > button p {
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+        </style>
+    """,
         unsafe_allow_html=True,
     )
 
@@ -135,7 +166,7 @@ else:
             panels.render_project_verifications()
         elif selected_route == "🗣️ SPEAK TO ME DIRECTLY":
             panels.render_speak_directly_panel()
-        elif selected_route == "🛡️ STRATEGIC LEADERSHIP VOUCHING TIER":
+        elif selected_route == "🛡️ LOCAL LEADERSHIP VOUCHING":
             panels.render_vouching_form()
 
     # --- Render Admin Panels ---

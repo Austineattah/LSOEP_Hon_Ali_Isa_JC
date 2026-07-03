@@ -62,7 +62,6 @@ def render_hero_banner():
     mace_base64 = image_to_base64(mace_path)
     portrait_base64 = image_to_base64(portrait_path)
 
-    # Balanced dimensions with explicit auto-scaling to avoid stretching or layout crops
     mace_html = (
         f"""<img src="data:image/png;base64,{mace_base64}" style="height: 130px !important; width: auto !important; max-width: 100% !important; object-fit: contain !important;">"""
         if mace_base64
@@ -74,7 +73,6 @@ def render_hero_banner():
         else ""
     )
 
-    # Added explicit inline overrides to the asset vaults to force open height allowances
     st.markdown(
         f"""
         <div class="unified-command-vault" style="
