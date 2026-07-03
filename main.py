@@ -1,7 +1,7 @@
 # ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - INTEGRATED MASTER ROUTER
 # Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
-# File: main.py (V44.0 - Enhanced Gateway Layout & Button Adaptive Sizing)
+# File: main.py (V51.0 - Native CSS Key Class Interceptor Engine)
 # ==============================================================================
 
 import sys
@@ -42,7 +42,7 @@ NAVIGATION_OPTIONS = [
     "📦 PALLIATIVE ENROLLMENT",
     "💡 CV & ARTISAN VAULT",
     "🚨 COMMUNITY URGENT NEED",
-    "🏛️ BEYOND RHETORICS",
+    "🏛️ BEYOND RHETORICS PROJECT EXECUTION",
     "🗣️ SPEAK TO ME DIRECTLY",
     "🛡️ LOCAL LEADERSHIP VOUCHING",
 ]
@@ -86,16 +86,13 @@ if st.sidebar.button(
     st.session_state.current_route = ADMIN_OPTIONS["COLLATION_HUB"]
     st.rerun()
 
-st.sidebar.caption("Engine Architecture: v44.0 | Adaptive Layout Router")
+st.sidebar.caption("Engine Architecture: v51.0 | Native Class Target")
 
 # --- 6. GLOBAL ROUTER ENGINE ---
 selected_route = st.session_state.current_route
 
 if selected_route == "HOME":
-    # Display the card-like header portrait container
     render_hero_banner()
-
-    # Injecting scrolling marquee right below the hero banner to create a spacing bridge
     render_marquee_header()
 
     st.markdown(
@@ -103,14 +100,14 @@ if selected_route == "HOME":
         unsafe_allow_html=True,
     )
 
-    # 🎨 INJECT CRITICAL BUTTON HEIGHT OVERRIDES TO PREVENT BOX CLIPPING
+    # 🎨 INJECT DYNAMIC ADAPTIVE INTERFACE AND KEY-LOCKED CONTINUOUS PULSING ANIMATIONS
     st.markdown(
         """
         <style>
-            /* Direct targeting of Streamlit button base structures on the Gateway stage */
+            /* Apply uniform auto-height and wrap constraints to all gateway nodes */
             div.stButton > button {
                 height: auto !important;
-                min-height: 80px !important;
+                min-height: 85px !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
@@ -120,12 +117,47 @@ if selected_route == "HOME":
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
+                transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out, background-color 0.4s !important;
             }
-            /* Ensure the content boxes don't truncate text grids with ellipsis */
             div.stButton > button p {
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
+            }
+
+            /* ✨ CONTINUOUS POP IN AND OUT BREATHING EMULSION KEYFRAMES */
+            @keyframes compilerPulsePop {
+                0% {
+                    transform: scale(1.0);
+                    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.2);
+                }
+                50% {
+                    transform: scale(1.04);
+                    box-shadow: 0 6px 18px rgba(212, 175, 55, 0.45);
+                    border: 1px solid #D4AF37 !important;
+                    background-color: #041d3d !important;
+                }
+                100% {
+                    transform: scale(1.0);
+                    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.2);
+                }
+            }
+
+            /* 🎯 Target specific instances using compiler-generated st-key class maps */
+            
+            /* 1. LEGISLATIVE FOOTPRINTS (key: nav_card_0) */
+            div.st-key-nav_card_0 button {
+                animation: compilerPulsePop 2.5s infinite ease-in-out !important;
+            }
+            
+            /* 2. BEYOND RHETORICS PROJECT EXECUTION (key: nav_card_6) */
+            div.st-key-nav_card_6 button {
+                animation: compilerPulsePop 2.5s infinite ease-in-out !important;
+            }
+            
+            /* 3. SPEAK TO ME DIRECTLY (key: nav_card_7) */
+            div.st-key-nav_card_7 button {
+                animation: compilerPulsePop 2.5s infinite ease-in-out !important;
             }
         </style>
     """,
@@ -162,7 +194,7 @@ else:
             panels.render_cv_vault()
         elif selected_route == "🚨 COMMUNITY URGENT NEED":
             panels.render_cun_trigger()
-        elif selected_route == "🏛️ BEYOND RHETORICS":
+        elif selected_route == "🏛️ BEYOND RHETORICS PROJECT EXECUTION":
             panels.render_project_verifications()
         elif selected_route == "🗣️ SPEAK TO ME DIRECTLY":
             panels.render_speak_directly_panel()
