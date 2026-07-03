@@ -55,32 +55,66 @@ def render_marquee_header():
 
 
 def render_hero_banner():
-    """Lightweight Dashboard Overview banner — reuses the marquee header component."""
+    """Lightweight Dashboard Overview banner — engineered with flexbox overrides to prevent viewport text clipping."""
     mace_path = os.path.join("assets", "digital_mace.png")
     portrait_path = os.path.join("assets", "hon_ali.png")
 
     mace_base64 = image_to_base64(mace_path)
     portrait_base64 = image_to_base64(portrait_path)
 
+    # Style image containers locally to prevent static asset size bleed on smaller viewports
     mace_html = (
-        f"""<img src="data:image/png;base64,{mace_base64}">""" if mace_base64 else ""
+        f"""<img src="data:image/png;base64,{mace_base64}" style="max-height: 120px; width: auto; object-fit: contain;">"""
+        if mace_base64
+        else ""
     )
     portrait_html = (
-        f"""<img src="data:image/png;base64,{portrait_base64}">"""
+        f"""<img src="data:image/png;base64,{portrait_base64}" style="max-height: 140px; width: auto; object-fit: contain; border-radius: 4px;">"""
         if portrait_base64
         else ""
     )
 
+    # Inline style injection overrides container clipping boundaries entirely
     st.markdown(
         f"""
-        <div class="unified-command-vault">
-            <div class="mace-vault-shield">{mace_html}</div>
-            <div class="vault-text-block">
-                <h1>HONOURABLE ALI ISA JC, <span class="phd-text">PhD</span></h1>
-                <div class="sub-title">MEMBER HOUSE OF REPRESENTATIVES<br>REPRESENTING BALANGA/BILLIRI FEDERAL CONSTITUENCY</div>
-                <div class="geo-stamp">GOMBE STATE</div>
+        <div class="unified-command-vault" style="
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            min-height: 180px !important;
+            height: auto !important;
+            padding: 20px 25px !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
+            word-wrap: break-word !important;
+            white-space: normal !important;
+            gap: 15px !important;
+        ">
+            <div class="mace-vault-shield" style="flex-shrink: 0 !important; display: flex; align-items: center; justify-content: center;">
+                {mace_html}
             </div>
-            <div class="photo-vault-shield">{portrait_html}</div>
+            <div class="vault-text-block" style="
+                flex-grow: 1 !important;
+                text-align: center !important;
+                overflow: visible !important;
+                white-space: normal !important;
+                word-break: keep-all !important;
+            ">
+                <h1 style="white-space: normal !important; word-wrap: break-word !important; font-size: calc(1.5rem + 1vw) !important; margin-bottom: 8px !important; line-height: 1.2 !important;">
+                    HONOURABLE ALI ISA JC, <span class="phd-text">PhD</span>
+                </h1>
+                <div class="sub-title" style="white-space: normal !important; word-wrap: break-word !important; font-size: calc(0.8rem + 0.3vw) !important; line-height: 1.4 !important; font-weight: 600 !important;">
+                    MEMBER HOUSE OF REPRESENTATIVES<br>REPRESENTING BALANGA/BILLIRI FEDERAL CONSTITUENCY
+                </div>
+                <div class="geo-stamp" style="margin-top: 8px !important; font-weight: 700 !important; letter-spacing: 2px !important;">
+                    GOMBE STATE
+                </div>
+            </div>
+            <div class="photo-vault-shield" style="flex-shrink: 0 !important; display: flex; align-items: center; justify-content: center;">
+                {portrait_html}
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
