@@ -92,13 +92,12 @@ if st.sidebar.button(
 st.sidebar.caption("Engine Architecture: v43.0 | Hardened Router")
 
 # --- 6. GLOBAL MARQUEE & ROUTER ---
-render_marquee_header()
 selected_route = st.session_state.current_route
 
 if selected_route == "HOME":
     render_hero_banner()
     st.markdown(
-        "<h2 class='nav-title'>CONSTITUENCY ENGAGEMENT CHANNELS........</h2>",
+        "<h2 class='nav-title'>CONSTITUENCY ENGAGEMENT CHANNELS</h2>",
         unsafe_allow_html=True,
     )
 
@@ -110,6 +109,7 @@ if selected_route == "HOME":
             st.session_state.current_route = option
             st.rerun()
 else:
+    render_marquee_header()
     if st.button(
         "↩️ Return to Main Gateway", use_container_width=True, key="nav_btn_return"
     ):

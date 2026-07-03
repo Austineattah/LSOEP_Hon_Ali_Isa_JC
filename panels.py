@@ -19,14 +19,13 @@ from registry import (
     ANNOUNCEMENT_CACHE_FILE,
 )
 from ui_modules import (
-    render_marquee_header,
     render_module_download_trigger,
     render_institutional_purge_engine,
 )
 from utils import trigger_background_autosave
 
 # ==============================================================================
-# ALL PUBLIC-FACING FORMS (FULL CODE RESTORED)
+# ALL PUBLIC-FACING FORMS
 # ==============================================================================
 
 
@@ -93,9 +92,7 @@ def render_skill_form():
 
         sv_stmt = st.text_area("Candidate Skill Interest Statement Details")
         sv_cam = st.camera_input("Biometric Security Verification Core Scan")
-        st.markdown(
-            "##### 🛡️ STRATEGIC LEADERSHIP VOUCHING TIER INTERFACE FRAME (ANTI-FRAUD MATRIX)"
-        )
+        st.markdown("##### 🛡️ LEADERSHIP VOUCHING TIER INTERFACE")
         v_leader_name = st.selectbox(
             "Select Vouching Community Leader",
             list(COMMUNITY_LEADERS.keys()),
@@ -339,9 +336,7 @@ def render_palliative_form():
                 ["Fertilizer", "Seedlings", "Other Area of Likely Intervention"],
             )
             p_expect = st.text_input("Type Your Expectation")
-        st.markdown(
-            "##### 🛡️ STRATEGIC LEADERSHIP VOUCHING TIER INTERFACE FRAME (ANTI-FRAUD MATRIX)"
-        )
+        st.markdown("##### 🛡️ LEADERSHIP VOUCHING TIER INTERFACE")
         v_leader_name_p = st.selectbox(
             "Select Vouching Community Leader",
             list(COMMUNITY_LEADERS.keys()),
@@ -391,12 +386,11 @@ def render_sponsored_bills_panel():
 
 
 # ==============================================================================
-# AUTHENTICATED PANELS (FULL CODE RESTORED)
+# AUTHENTICATED PANELS
 # ==============================================================================
 
 
 def ward_collation_officer_panel():
-    render_marquee_header()
     st.markdown(
         """<div class="supervisor-header swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🛡️ Ward Collation Officer Command: Form EC8A Logs</div>""",
         unsafe_allow_html=True,
@@ -496,7 +490,6 @@ def ward_collation_officer_panel():
 
 
 def agent_panel():
-    render_marquee_header()
     st.markdown(
         """<h3 class="swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🗳️ POLLING UNIT AGENT: FIELD DATA TRANSFERS</h3>""",
         unsafe_allow_html=True,
@@ -590,7 +583,7 @@ def agent_panel():
                 <div class="slip-row"><span>BVAS S/N:</span> <span>{a_data['BVAS_Serial_Number']}</span></div>
                 <div class="slip-row" style="color:red;"><span>APC:</span> <span>{a_data['APC_Votes']}</span></div>
                 <div class="slip-row" style="color:blue;"><span>NDC:</span> <span>{a_data['NDC_Votes']}</span></div>
-                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{p_data['PDP_Votes']}</span></div>
+                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{a_data['PDP_Votes']}</span></div>
                 <div class="slip-row" style="color:orange;"><span>ADC:</span> <span>{a_data['ADC_Votes']}</span></div>
             </div>
             """,
@@ -619,7 +612,6 @@ def agent_panel():
 
 
 def main_dashboard(conn):
-    render_marquee_header()
     st.markdown(
         """<h2 class="swing-in" style="font-size: 1.8rem; text-transform: uppercase;">🏛️ Executive Control Command Dashboard Portal Array</h2>""",
         unsafe_allow_html=True,
@@ -631,7 +623,7 @@ def main_dashboard(conn):
         <style>
             button[data-baseweb="tab"] {
                 font-size: 1.2rem !important;
-                color: #D4AF37 !important;
+                color: #0000FF !important;
                 font-weight: bold !important;
                 text-transform: uppercase !important;
             }
@@ -845,7 +837,6 @@ def render_project_verifications():
 
 
 def strategic_committees_panel():
-    render_marquee_header()
     st.markdown(
         """<div class="supervisor-header swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🛡️ MODULE 13: STRATEGIC COMMITTEES (1-10) ACCESS GATEWAY</div>""",
         unsafe_allow_html=True,
@@ -1105,9 +1096,7 @@ def render_vouching_form():
     """
     st.markdown("<div class='vouching-form-container'>", unsafe_allow_html=True)
 
-    st.markdown(
-        "### 🛡️ STRATEGIC LEADERSHIP VOUCHING TIER INTERFACE FRAME (ANTI-FRAUD MATRIX)"
-    )
+    st.markdown("### 🛡️ LEADERSHIP VOUCHING TIER INTERFACE")
     st.markdown("---")
 
     # --- REFERENCE PROGRAM SELECTION ---
@@ -1169,5 +1158,3 @@ def render_vouching_form():
                 st.error("PLEASE FILL OUT ALL FIELDS BEFORE SUBMITTING.")
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-# Hot-Reload Cache Invalidation Token: 2026-07-02-v2
