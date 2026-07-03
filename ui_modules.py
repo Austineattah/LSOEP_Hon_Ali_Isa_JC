@@ -62,19 +62,19 @@ def render_hero_banner():
     mace_base64 = image_to_base64(mace_path)
     portrait_base64 = image_to_base64(portrait_path)
 
-    # Style image containers locally to prevent static asset size bleed on smaller viewports
+    # Balanced dimensions with explicit auto-scaling to avoid stretching or layout crops
     mace_html = (
-        f"""<img src="data:image/png;base64,{mace_base64}" style="max-height: 120px; width: auto; object-fit: contain;">"""
+        f"""<img src="data:image/png;base64,{mace_base64}" style="height: 130px !important; width: auto !important; max-width: 100% !important; object-fit: contain !important;">"""
         if mace_base64
         else ""
     )
     portrait_html = (
-        f"""<img src="data:image/png;base64,{portrait_base64}" style="max-height: 140px; width: auto; object-fit: contain; border-radius: 4px;">"""
+        f"""<img src="data:image/png;base64,{portrait_base64}" style="height: 140px !important; width: auto !important; max-width: 100% !important; object-fit: contain !important; border-radius: 6px !important;">"""
         if portrait_base64
         else ""
     )
 
-    # Inline style injection overrides container clipping boundaries entirely
+    # Added explicit inline overrides to the asset vaults to force open height allowances
     st.markdown(
         f"""
         <div class="unified-command-vault" style="
@@ -92,7 +92,7 @@ def render_hero_banner():
             white-space: normal !important;
             gap: 15px !important;
         ">
-            <div class="mace-vault-shield" style="flex-shrink: 0 !important; display: flex; align-items: center; justify-content: center;">
+            <div class="mace-vault-shield" style="flex-shrink: 0 !important; height: auto !important; max-height: 100% !important; display: flex !important; align-items: center !important; justify-content: center !important; overflow: visible !important;">
                 {mace_html}
             </div>
             <div class="vault-text-block" style="
@@ -112,7 +112,7 @@ def render_hero_banner():
                     GOMBE STATE
                 </div>
             </div>
-            <div class="photo-vault-shield" style="flex-shrink: 0 !important; display: flex; align-items: center; justify-content: center;">
+            <div class="photo-vault-shield" style="flex-shrink: 0 !important; height: auto !important; max-height: 100% !important; display: flex !important; align-items: center !important; justify-content: center !important; overflow: visible !important;">
                 {portrait_html}
             </div>
         </div>
@@ -172,7 +172,7 @@ def render_institutional_purge_engine(key_suffix):
     confirm_purge = st.text_input(
         "Type 'PURGE SYSTEM DATA' to authorize reset:", key=f"purge_box_{key_suffix}"
     )
-    if st.button(
+    if f"purge_btn_{key_suffix}" in st.session_state or st.button(
         "💥 EXECUTE SYSTEM PURGE", type="primary", key=f"purge_btn_{key_suffix}"
     ):
         if confirm_purge == "PURGE SYSTEM DATA":
