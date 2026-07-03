@@ -35,21 +35,6 @@ def render_marquee_header():
         else ""
     )
 
-    st.markdown(
-        f"""
-        <div class="unified-command-vault">
-            <div class="mace-vault-shield">{mace_html}</div>
-            <div class="vault-text-block">
-                <h1>HONOURABLE ALI ISA JC, <span class="phd-text">PhD</span></h1>
-                <div class="sub-title">MEMBER HOUSE OF REPRESENTATIVES<br>REPRESENTING BALANGA/BILLIRI FEDERAL CONSTITUENCY</div>
-                <div class="geo-stamp">GOMBE STATE</div>
-            </div>
-            <div class="photo-vault-shield">{portrait_html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # Fetch dynamic session announcements or fall back to default institutional marquee text
     announcement_text = st.session_state.get(
         "global_scrolling_announcement",
@@ -71,7 +56,35 @@ def render_marquee_header():
 
 def render_hero_banner():
     """Lightweight Dashboard Overview banner — reuses the marquee header component."""
-    render_marquee_header()
+    mace_path = os.path.join("assets", "digital_mace.png")
+    portrait_path = os.path.join("assets", "hon_ali.png")
+
+    mace_base64 = image_to_base64(mace_path)
+    portrait_base64 = image_to_base64(portrait_path)
+
+    mace_html = (
+        f"""<img src="data:image/png;base64,{mace_base64}">""" if mace_base64 else ""
+    )
+    portrait_html = (
+        f"""<img src="data:image/png;base64,{portrait_base64}">"""
+        if portrait_base64
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="unified-command-vault">
+            <div class="mace-vault-shield">{mace_html}</div>
+            <div class="vault-text-block">
+                <h1>HONOURABLE ALI ISA JC, <span class="phd-text">PhD</span></h1>
+                <div class="sub-title">MEMBER HOUSE OF REPRESENTATIVES<br>REPRESENTING BALANGA/BILLIRI FEDERAL CONSTITUENCY</div>
+                <div class="geo-stamp">GOMBE STATE</div>
+            </div>
+            <div class="photo-vault-shield">{portrait_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_quick_stats():
