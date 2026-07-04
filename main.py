@@ -1,7 +1,7 @@
 # ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - INTEGRATED MASTER ROUTER
 # Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
-# File: main.py (V51.0 - Native CSS Key Class Interceptor Engine)
+# File: main.py (V53.0 - Dynamic Hover Effects Engine)
 # ==============================================================================
 
 import sys
@@ -12,6 +12,9 @@ import streamlit as st
 # --- 1. SUPER-EARLY STATE INITIALIZATION (CRITICAL CRASH PREVENTION) ---
 if "current_route" not in st.session_state:
     st.session_state.current_route = "HOME"
+
+if "admin_authenticated" not in st.session_state:
+    st.session_state.admin_authenticated = False
 
 if sys.platform == "win32":
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -86,7 +89,7 @@ if st.sidebar.button(
     st.session_state.current_route = ADMIN_OPTIONS["COLLATION_HUB"]
     st.rerun()
 
-st.sidebar.caption("Engine Architecture: v51.0 | Native Class Target")
+st.sidebar.caption("Engine Architecture: v53.0 | Dynamic Hover")
 
 # --- 6. GLOBAL ROUTER ENGINE ---
 selected_route = st.session_state.current_route
@@ -100,11 +103,10 @@ if selected_route == "HOME":
         unsafe_allow_html=True,
     )
 
-    # 🎨 INJECT DYNAMIC ADAPTIVE INTERFACE AND KEY-LOCKED CONTINUOUS PULSING ANIMATIONS
+    # 🎨 INJECT DYNAMIC ADAPTIVE INTERFACE AND HOVER STYLES
     st.markdown(
         """
         <style>
-            /* Apply uniform auto-height and wrap constraints to all gateway nodes */
             div.stButton > button {
                 height: auto !important;
                 min-height: 85px !important;
@@ -123,9 +125,14 @@ if selected_route == "HOME":
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
+                transition: color 0.3s ease-in-out; /* Add smooth transition for text color */
             }
 
-            /* ✨ CONTINUOUS POP IN AND OUT BREATHING EMULSION KEYFRAMES */
+            /* --- NEW HOVER EFFECT --- */
+            div.stButton > button:hover p {
+                color: #D4AF37 !important; /* Brushed Gold text color on hover */
+            }
+
             @keyframes compilerPulsePop {
                 0% {
                     transform: scale(1.0);
@@ -142,20 +149,8 @@ if selected_route == "HOME":
                     box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.2);
                 }
             }
-
-            /* 🎯 Target specific instances using compiler-generated st-key class maps */
-            
-            /* 1. LEGISLATIVE FOOTPRINTS (key: nav_card_0) */
-            div.st-key-nav_card_0 button {
-                animation: compilerPulsePop 2.5s infinite ease-in-out !important;
-            }
-            
-            /* 2. BEYOND RHETORICS PROJECT EXECUTION (key: nav_card_6) */
-            div.st-key-nav_card_6 button {
-                animation: compilerPulsePop 2.5s infinite ease-in-out !important;
-            }
-            
-            /* 3. SPEAK TO ME DIRECTLY (key: nav_card_7) */
+            div.st-key-nav_card_0 button,
+            div.st-key-nav_card_6 button,
             div.st-key-nav_card_7 button {
                 animation: compilerPulsePop 2.5s infinite ease-in-out !important;
             }
@@ -177,6 +172,8 @@ else:
         "↩️ Return to Main Gateway", use_container_width=True, key="nav_btn_return"
     ):
         st.session_state.current_route = "HOME"
+        if "admin_authenticated" in st.session_state:
+            st.session_state.admin_authenticated = False
         st.rerun()
     st.markdown("<hr class='nav-divider'>", unsafe_allow_html=True)
 
@@ -204,14 +201,19 @@ else:
     # --- Render Admin Panels ---
     elif selected_route in ADMIN_OPTIONS.values():
         if selected_route == ADMIN_OPTIONS["CONTROL_ROOM"]:
-            st.markdown("### 🔑 Executive Command System Authorization")
-            admin_key = st.text_input(
-                "Enter Command Hub Key:", type="password", key="admin_key"
-            )
-            if admin_key == "ali 2027":
+            if st.session_state.admin_authenticated:
                 panels.main_dashboard(conn=None)
-            elif admin_key:
-                st.error("🛑 SYSTEM ACCESS REJECTED")
+            else:
+                st.markdown("### 🔑 Executive Command System Authorization")
+                admin_key = st.text_input(
+                    "Enter Command Hub Key:", type="password", key="admin_key_input"
+                )
+                if st.button("Authorize Access", key="admin_auth_button"):
+                    if admin_key == "ali 2027":
+                        st.session_state.admin_authenticated = True
+                        st.rerun()
+                    elif admin_key:
+                        st.error("🛑 SYSTEM ACCESS REJECTED")
 
         elif selected_route == ADMIN_OPTIONS["STRATEGIC_COMMITTEES"]:
             panels.strategic_committees_panel()

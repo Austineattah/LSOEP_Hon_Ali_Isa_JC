@@ -613,48 +613,82 @@ def agent_panel():
 
 def main_dashboard(conn):
     st.markdown(
-        """<h2 class="swing-in" style="font-size: 1.8rem; text-transform: uppercase;">🏛️ Executive Control Command Dashboard Portal Array</h2>""",
+        """<h2 class="swing-in" style="font-size: 1.8rem; text-transform: uppercase;">🏛️ Executive Control Command Dashboard</h2>""",
         unsafe_allow_html=True,
     )
 
-    # Custom CSS for the tabs to increase font size, change color, and set to uppercase
+    # Custom CSS for a professional sidebar navigation experience
     st.markdown(
         """
         <style>
-            button[data-baseweb="tab"] {
-                font-size: 1.2rem !important;
-                color: #0000FF !important;
-                font-weight: bold !important;
-                text-transform: uppercase !important;
+            /* Hide the default radio button circles */
+            div[data-testid="stRadio"] > div > label > div:first-of-type {
+                display: none;
             }
-            button[data-baseweb="tab"][aria-selected="true"] {
-                color: white !important;
-                background-color: #0B3C5D !important;
+            
+            /* Style the labels to look like interactive buttons */
+            div[data-testid="stRadio"] > div > label {
+                display: block;
+                background-color: #061A33; /* Midnight Navy */
+                color: white !important; /* Default text color */
+                border: 1px solid #0B3C5D; /* Darker navy border */
+                border-radius: 8px;
+                padding: 12px 15px;
+                width: 100%;
+                text-align: left;
+                margin-bottom: 8px;
+                font-size: 1.1rem !important; /* Increased font size */
+                font-weight: 600;
+                text-transform: uppercase !important; /* Uppercase text */
+                cursor: pointer;
+                transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+            }
+
+            /* --- NEW HOVER EFFECT --- */
+            div[data-testid="stRadio"] > div > label:hover {
+                background-color: #0B3C5D;
+                border-color: #D4AF37; /* Brushed Gold border on hover */
+                color: #D4AF37 !important; /* Brushed Gold text on hover */
             }
         </style>
     """,
         unsafe_allow_html=True,
     )
 
-    tabs = st.tabs(
-        [
-            "📊 Master Registry Matrix",
-            "🗣️ Citizen Feedback",
-            "📢 Admin Announcement Control",
-            "⚖️ Database Audit Diagnostics",
-            "🛡️ RADAR Deduplication Interceptor",
-            "🎓 Scholar Talent Matrix",
-            "💎 Vantedge Influencer Proportions",
-            "🗳️ Live Election Analytical Sync",
-            "📝 Ground Truth Form EC8A Data",
-            "📂 Bulk Data Sync Stream",
-            "📜 Executive Waiver Ledger",
-            "🚀 Legislative Progress Tracker",
-            "📅 Long-Term Momentum Monitoring",
-        ]
+    admin_modules = [
+        "📊 Master Registry Matrix",
+        "🗣️ Citizen Feedback",
+        "📢 Admin Announcement Control",
+        "⚖️ Database Audit Diagnostics",
+        "🛡️ RADAR Deduplication Interceptor",
+        "🎓 Scholar Talent Matrix",
+        "💎 Vantedge Influencer Proportions",
+        "🗳️ Live Election Analytical Sync",
+        "📝 Ground Truth Form EC8A Data",
+        "📂 Bulk Data Sync Stream",
+        "📜 Executive Waiver Ledger",
+        "🚀 Legislative Progress Tracker",
+        "📅 Long-Term Momentum Monitoring",
+    ]
+
+    st.sidebar.markdown("<hr>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        "<h3 class='admin-header' style='font-size: 1.5rem;'>Command Modules</h3>",
+        unsafe_allow_html=True,
     )
 
-    with tabs[0]:
+    if "admin_module_view" not in st.session_state:
+        st.session_state.admin_module_view = admin_modules[0]
+
+    selected_module = st.sidebar.radio(
+        "MODULES",
+        options=admin_modules,
+        key="admin_module_view",
+        label_visibility="collapsed",
+    )
+
+    # --- RENDER MAIN CONTENT BASED ON SELECTION ---
+    if selected_module == "📊 Master Registry Matrix":
         st.subheader("📊 Master Verification Registry Database Partition Array")
         st.dataframe(st.session_state.get("global_registry", pd.DataFrame()))
         render_module_download_trigger(
@@ -664,14 +698,11 @@ def main_dashboard(conn):
         )
         render_institutional_purge_engine("t1_purge")
 
-    with tabs[1]:
+    elif selected_module == "🗣️ Citizen Feedback":
         st.subheader("🗣️ Citizen Feedback Messages")
-        if (
-            "feedback_registry" not in st.session_state
-            or st.session_state.feedback_registry.empty
-        ):
-            st.info("There are currently no feedback messages.")
-            st.session_state.feedback_registry = pd.DataFrame(
+        feedback_df = st.session_state.get(
+            "feedback_registry",
+            pd.DataFrame(
                 columns=[
                     "Timestamp",
                     "First_Name",
@@ -683,16 +714,17 @@ def main_dashboard(conn):
                     "Email",
                     "Message",
                 ]
-            )
+            ),
+        )
+        if feedback_df.empty:
+            st.info("There are currently no feedback messages.")
         else:
-            st.dataframe(st.session_state.feedback_registry)
+            st.dataframe(feedback_df)
             render_module_download_trigger(
-                st.session_state.feedback_registry,
-                "Feedback_Registry_Log",
-                "t_feedback_dl",
+                feedback_df, "Feedback_Registry_Log", "t_feedback_dl"
             )
 
-    with tabs[2]:
+    elif selected_module == "📢 Admin Announcement Control":
         st.subheader("📢 Admin Announcement Control")
         current_announcement = st.session_state.get("global_scrolling_announcement", "")
         new_announcement = st.text_area(
@@ -713,7 +745,7 @@ def main_dashboard(conn):
                 st.error(f"Failed to save announcement: {e}")
             st.rerun()
 
-    with tabs[3]:
+    elif selected_module == "⚖️ Database Audit Diagnostics":
         st.subheader("⚖️ Forensic Audit Database Query & Connection Diagnostic Stream")
         st.error("⚠️ Isolation Warning Layer: Supabase API Cloud Gateway locked.")
         if conn is not None:
@@ -725,47 +757,67 @@ def main_dashboard(conn):
             st.json(serializable_state)
         render_institutional_purge_engine("t3_purge")
 
-    with tabs[4]:
+    elif selected_module == "🛡️ RADAR Deduplication Interceptor":
         st.subheader(
             "🛡️ RADAR Multi-Intake Anti-Fraud Deduplication Interceptor Shield"
         )
-        st.write("Anti-fraud logic is handled during form submissions.")
+        st.info(
+            "Anti-fraud logic is handled automatically during form submissions. Any detected duplicate NIN entries are rejected by the system's security shield protocols."
+        )
 
-    with tabs[5]:
+    elif selected_module == "🎓 Scholar Talent Matrix":
         st.subheader("🎓 Academic Grants Distribution Pools & Talent Demographics Hub")
-        st.write(
+        st.info(
             "Scholarship data will be analyzed and displayed here in future versions."
         )
 
-    with tabs[6]:
+    elif selected_module == "💎 Vantedge Influencer Proportions":
         st.subheader("💎 Vantedge Strategic Influence Vectors & Demographics Scale")
-        st.write("Community leader data will be visualized here.")
+        st.info(
+            "Community leader data and their vouching activities will be visualized here."
+        )
 
-    with tabs[7]:
+    elif selected_module == "🗳️ Live Election Analytical Sync":
         st.subheader(
             "🗳️ Cross-National Multi-Tier Election Verification War Room Sync Arrays"
         )
-        st.write("Election data analytics will be shown here.")
+        st.info(
+            "Live election data analytics from field agents will be aggregated and displayed here."
+        )
 
-    with tabs[8]:
+    elif selected_module == "📝 Ground Truth Form EC8A Data":
         st.subheader("📝 Ground Truth Form EC8A Audited Verification Schema")
-        st.dataframe(pd.DataFrame(list(st.session_state.submitted_wards.values())))
+        ec8a_df = pd.DataFrame(
+            list(st.session_state.get("submitted_wards", {}).values())
+        )
+        if ec8a_df.empty:
+            st.info(
+                "No Form EC8A data has been submitted by Ward Collation Officers yet."
+            )
+        else:
+            st.dataframe(ec8a_df)
 
-    with tabs[9]:
+    elif selected_module == "📂 Bulk Data Sync Stream":
         st.subheader("📂 Bulk Throughput Tunnel Sync")
-        st.write("Bulk data upload features will be implemented here.")
+        st.info(
+            "Bulk data upload features for large datasets will be implemented in this module."
+        )
 
-    with tabs[10]:
+    elif selected_module == "📜 Executive Waiver Ledger":
         st.subheader("📜 Strategic Waiver Assignment Parameters Matrix Ledgers")
-        st.write("Waiver and special consideration data will be logged here.")
+        st.info(
+            "Waiver and special consideration data will be logged and managed here."
+        )
 
-    with tabs[11]:
+    elif selected_module == "🚀 Legislative Progress Tracker":
         st.subheader("🚀 National Assembly Legislative Action Motion Tracking")
         st.dataframe(pd.DataFrame(SPONSORED_BILLS))
 
-    with tabs[12]:
+    elif selected_module == "📅 Long-Term Momentum Monitoring":
         st.subheader("📅 Long-Term Temporal Momentum Tracking Interface Matrix Trends")
-        st.write("Time-series analysis of submissions will be visualized here.")
+        st.info(
+            "Time-series analysis of submissions and platform engagement will be visualized here."
+        )
 
 
 @st.cache_data
