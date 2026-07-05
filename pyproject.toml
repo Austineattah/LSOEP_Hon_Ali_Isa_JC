@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lsoep-portal"
+version = "52.0.0"
+description = "Legislative Strategic Outreach & Equity Portal for Hon. Ali Isa JC"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Austine Attah", email = "mail.austattah@gmail.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: Streamlit",
+]
+dependencies = [
+    "streamlit>=1.35.0",
+    "supabase>=2.4.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
