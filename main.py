@@ -226,7 +226,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
             x="Module Command Hub",
             y="Active Structural Records",
             horizontal=True,
-            use_container_width=True,
+            width='stretch',
         )
 
     with v_col2:
@@ -240,7 +240,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
                 ),
             },
             hide_index=True,
-            use_container_width=True,
+            width='stretch',
         )
 
     st.markdown("---")

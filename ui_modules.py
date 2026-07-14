@@ -173,7 +173,7 @@ def render_module_download_trigger(df, filename_prefix, key):
             file_name=f"{filename_prefix}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
             key=key,
-            use_container_width=True,
+            width='stretch',
         )
 
 

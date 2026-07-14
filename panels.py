@@ -174,7 +174,7 @@ def render_pie_chart(title):
     values = [4500, 2500, 1053, 500]
     fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.3)])
     fig.update_layout(title_text=title, showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def render_skill_form():
@@ -249,7 +249,7 @@ def render_skill_form():
         v_leader_details = COMMUNITY_LEADERS[v_leader_name]
 
         if st.form_submit_button(
-            "🚀 COMMIT APPLICATION TO TRAINING POOLS", use_container_width=True
+            "🚀 COMMIT APPLICATION TO TRAINING POOLS", width='stretch'
         ):
             if not (sv_name and sv_phone and sv_nin and sv_vin and sv_stmt):
                 st.error(
@@ -361,7 +361,7 @@ def render_scholarship_form():
         sch_cam = st.camera_input("Capture Student Identity Card Sensor")
         if st.form_submit_button(
             "🚀 SUBMIT SCHOLARSHIP ENTRY APPLICATION PARAMETERS",
-            use_container_width=True,
+            width='stretch',
         ):
             st.info("System intake pipeline initialized successfully.")
 
@@ -414,7 +414,7 @@ def render_cv_vault():
         cv_cam = st.camera_input("Capture Valid Professional Certification Seals")
         if st.form_submit_button(
             "📤 COMMIT CREDENTIALS STRINGS TO TALENT PLATFORM ARCHIVE",
-            use_container_width=True,
+            width='stretch',
         ):
             st.info("Transmission channel connected smoothly.")
 
@@ -451,7 +451,7 @@ def render_cun_trigger():
             "Field Visual Evidence Deficit Capture Sensor Matrix Camera"
         )
         if st.form_submit_button(
-            "🚨 TRIGGER COMMAND INCIDENT VECTOR ALERT", use_container_width=True
+            "🚨 TRIGGER COMMAND INCIDENT VECTOR ALERT", width='stretch'
         ):
             st.info("Field alert dispatch sequence routing triggered.")
 
@@ -505,7 +505,7 @@ def render_palliative_form():
             "Biometric Face Capture Matrix Core Verification Face Scan"
         )
         if st.form_submit_button(
-            "🚀 COMPLETE PALLIATIVE NOMINATION RECORD", use_container_width=True
+            "🚀 COMPLETE PALLIATIVE NOMINATION RECORD", width='stretch'
         ):
             st.info("Palliative submission metrics validated against core cache.")
 
@@ -739,7 +739,7 @@ def ward_collation_officer_panel():
         st.camera_input("Live Capture Sensor Matrix: Form EC8A Sheet")
 
         if st.form_submit_button(
-            "🔍 GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP", use_container_width=True
+            "🔍 GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP", width='stretch'
         ):
             if not sup_name or not sup_phone:
                 st.error("🛑 FORM ERROR: Supervisor name and phone must be specified.")
@@ -783,7 +783,7 @@ def ward_collation_officer_panel():
         )
         col_v1, col_v2 = st.columns(2)
         with col_v1:
-            if st.button("🔒 CONFIRM & LOG METRICS", use_container_width=True):
+            if st.button("🔒 CONFIRM & LOG METRICS", width='stretch'):
                 ward_id = f"{p_data['LGA']}_{p_data['Ward']}".replace(" ", "_").upper()
                 if ward_id in st.session_state.submitted_wards:
                     st.error("🛑 Results for this Ward have already been locked.")
@@ -796,7 +796,7 @@ def ward_collation_officer_panel():
                     time.sleep(1)
                     st.rerun()
         with col_v2:
-            if st.button("❌ ABORT TRANSACTION", use_container_width=True):
+            if st.button("❌ ABORT TRANSACTION", width='stretch'):
                 st.session_state.sup_slip_preview = None
                 st.warning("Preview cleared.")
                 st.rerun()
@@ -813,7 +813,7 @@ def agent_panel():
     if not st.session_state.agent_authenticated:
         with st.form("agent_login_form"):
             password = st.text_input("Enter Agent Access Key:", type="password")
-            if st.form_submit_button("Authenticate", use_container_width=True):
+            if st.form_submit_button("Authenticate", width='stretch'):
                 if password == "ali2027":
                     st.session_state.agent_authenticated = True
                     st.rerun()
@@ -879,7 +879,7 @@ def agent_panel():
             ec8a_capture = st.camera_input("📸 LIVE CAPTURE: FORM EC8A RESULT SHEET")
 
             submitted = st.form_submit_button(
-                "🔍 COMPREHENSIVE ENTRY EVALUATION", use_container_width=True
+                "🔍 COMPREHENSIVE ENTRY EVALUATION", width='stretch'
             )
 
         if submitted:
@@ -933,7 +933,7 @@ def agent_panel():
         )
         av1, av2 = st.columns(2)
         with av1:
-            if st.button("🔒 COMMIT & ARCHIVE RECORD", use_container_width=True):
+            if st.button("🔒 COMMIT & ARCHIVE RECORD", width='stretch'):
                 pu_id_confirm = (
                     f"{a_data['LGA']}_{a_data['Ward']}_{a_data['PU']}".replace(
                         " ", "_"
@@ -947,7 +947,7 @@ def agent_panel():
                 time.sleep(1)
                 st.rerun()
         with av2:
-            if st.button("❌ DISCARD TRANSACTION", use_container_width=True):
+            if st.button("❌ DISCARD TRANSACTION", width='stretch'):
                 st.session_state.agt_slip_preview = None
                 st.warning("Buffer cleared.")
                 st.rerun()
@@ -1109,7 +1109,7 @@ def strategic_committees_panel():
             committee_key_input = st.text_input(
                 "Enter General Passkey to Unlock Module:", type="password"
             )
-            if st.form_submit_button("Unlock Module", use_container_width=True):
+            if st.form_submit_button("Unlock Module", width='stretch'):
                 if (
                     committee_key_input == "congratulationshonvictor"
                 ):  # This password can be changed
@@ -1137,7 +1137,7 @@ def strategic_committees_panel():
             with st.form(key=f"committee_form_{selected_committee.replace(' ', '_')}"):
                 # ... (form fields as in your original code)
                 if st.form_submit_button(
-                    "Submit Information", use_container_width=True
+                    "Submit Information", width='stretch'
                 ):
                     # ... (submission logic as in your original code)
                     st.success("Information submitted.")
@@ -1148,7 +1148,7 @@ def strategic_committees_panel():
             with st.form(key=f"login_form_{selected_committee.replace(' ', '_')}"):
                 password = st.text_input("Enter Committee Passkey:", type="password")
                 if st.form_submit_button(
-                    "🔓 Unlock Committee", use_container_width=True
+                    "🔓 Unlock Committee", width='stretch'
                 ):
                     correct_password = STRATEGIC_COMMITTEE_PASSWORDS.get(
                         selected_committee
@@ -1185,7 +1185,7 @@ def render_speak_directly_panel():
             email = st.text_input("Email Address (Optional)")
         message_body = st.text_area("Message *", max_chars=1000)
         if st.form_submit_button(
-            "🔒 Transmit Secure Message", use_container_width=True
+            "🔒 Transmit Secure Message", width='stretch'
         ):
             if not all([first_name, surname, message_body]):
                 st.error("Please fill all required fields.")
@@ -1228,7 +1228,7 @@ def render_committee_compliance_form():
             "Vouched Project Resources Expended (NGN):", min_value=0.0, step=1000.0
         )
         if st.form_submit_button(
-            "🔒 Transmit Report to Executive Control Room", use_container_width=True
+            "🔒 Transmit Report to Executive Control Room", width='stretch'
         ):
             st.success(
                 f"✅ Report for {officer_name} logged under {committee_group.split(':')[0]}!"
