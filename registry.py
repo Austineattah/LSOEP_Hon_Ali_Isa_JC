@@ -1,6 +1,6 @@
 # ==============================================================================
 # 🏛️ LSOEP FEDERAL MASTER REGISTRY & GEOGRAPHIC DATA LAYER
-# Project: Balanga and Billiri Federal Constituency (Hon. Ali Isa JC, PhD)
+# Project: Balanga/Billiri Federal Constituency (HONOURABLE ALI ISA JC, PhD)
 # File: registry.py (Aggregated Master Data & Session Memory State Core)
 # ==============================================================================
 
@@ -10,91 +10,65 @@ import os
 import json
 
 # Institutional Software Display Branding Variables
-HON_TITLE = "Hon. Ali Isa JC, PhD"
-CONSTITUENCY_DESC = "Balanga and Billiri Federal Constituency (Gombe State)"
+HON_TITLE = "HONOURABLE ALI ISA JC, PhD"
+CONSTITUENCY_DESC = "BALANGA/BILLIRI FEDERAL CONSTITUENCY (GOMBE STATE)"
 
 GEOGRAPHY = {
-    "Billiri LGA": [
-        "BAGANJE NORTH",
-        "BAGANJE SOUTH",
-        "BARE",
-        "BILLIRI NORTH",
-        "BILLIRI SOUTH",
-        "KALMAI",
-        "TAL",
-        "TANGLANG",
-        "TODI",
-        "TUDU KWAYA",
+    "BALANGA": [
+        "Wuro-dadiya",
+        "Gelengu",
+        "Bangu",
+        "Dala-waja",
+        "Nyuwar",
+        "Jessu",
+        "Kindiyo",
+        "Kulani",
+        "Sikkam",
+        "Chama",
     ],
-    "Balanga LGA": [
-        "BAMBAM",
-        "BANGU",
-        "DADIYA",
-        "GELENGU / BALANGA",
-        "KINDIYO",
-        "KULANI / DEGRE / SIKKAM",
-        "MWONA",
-        "NYUWAR / JESSU",
-        "SWA / REF / W. WAJA",
-        "TALASSE / DONG / REME",
-    ],
+    "BILLIRI": ["Billiri-North", "Billiri-South", "Kalmai", "Tal", "Todi"],
 }
 
 LGA_WARD_DATA = {
-    "BILLIRI": GEOGRAPHY["Billiri LGA"],
-    "BALANGA": GEOGRAPHY["Balanga LGA"],
+    "BALANGA": GEOGRAPHY["BALANGA"],
+    "BILLIRI": GEOGRAPHY["BILLIRI"],
 }
 
 # 🏛️ EXPLICIT COMMUNITY STAKEHOLDER DIRECTORY
 COMMUNITY_LEADERS = {
-    "Hon. Ali Isa JC, PhD": {
+    "HONOURABLE ALI ISA JC, PhD": {
         "contact": "08000000000",
         "nin": "00000000000",
-        "lga": "BALANGA",
-        "ward": "CENTRAL",
-        "portfolio": "Federal Representative, Balanga/Billiri",
-    },
-    "Dr. Musa Tango": {
-        "contact": "08011111111",
-        "nin": "11111111111",
         "lga": "BILLIRI",
-        "ward": "TAL",
-        "portfolio": "Director of Skills, LSOEP",
-    },
-    "Hajia Amina S. Ahmed": {
-        "contact": "08022222222",
-        "nin": "22222222222",
-        "lga": "BALANGA",
-        "ward": "DADIYA",
-        "portfolio": "Women Mobilization Lead, Gombe South",
+        "ward": "Billiri-South",
+        "portfolio": "Federal Representative, Balanga/Billiri",
     },
 }
 
 # ==============================================================================
-# NEW: LEGISLATIVE DATA
+# LEGISLATIVE DATA
 # ==============================================================================
 SPONSORED_BILLS = [
     {
-        "title": "A Bill for an Act to Establish the Federal College of Horticulture, Dadin Kowa",
+        "title": "A Bill for an Act to Establish the Federal College of Horticulture, Dadin Kowa, Gombe State",
+        "description": "This bill seeks to establish a specialized federal institution for horticultural studies in Dadin Kowa, aiming to boost the agricultural sector, provide specialized training, and promote modern horticultural practices in Gombe State and the nation.",
+        "status": "Awaiting Second Reading",
+        "date": "2023-11-20",
+        "progress": 30,
+    },
+    {
+        "title": "A Motion on the Need to Address the Devastating Effects of Erosion in Balanga/Billiri Federal Constituency",
+        "description": "This motion calls for urgent federal intervention through the Ecological Fund Office to address severe erosion threatening communities, farmlands, and infrastructure across the Balanga and Billiri LGAs.",
         "status": "Passed",
-        "summary": "This landmark bill establishes a specialized Federal College of Horticulture in Dadin Kowa, Gombe State. It aims to promote agricultural education, develop modern horticultural practices, and create a hub for research and innovation in the North-East, thereby boosting food security and providing employment opportunities for the youth.",
-    },
-    {
-        "title": "A Bill for an Act to amend the Trafficking in Persons (Prohibition) Enforcement and Administration Act, 2015",
-        "status": "In Committee",
-        "summary": "This bill seeks to strengthen the legal framework for combating human trafficking by introducing stricter penalties for offenders, enhancing victim protection measures, and improving the operational capacity of NAPTIP to investigate and prosecute trafficking cases.",
-    },
-    {
-        "title": "A Bill for an Act to Establish the National Skills and Innovation Development Council",
-        "status": "First Reading",
-        "summary": "Proposes the creation of a national council to streamline and regulate vocational and technical training across Nigeria. The goal is to standardize certification, promote innovation, and align skill acquisition programs with the demands of the modern economy.",
-    },
-    {
-        "title": "Motion on the Need to Address the Menace of Soil Erosion in Balanga/Billiri Federal Constituency",
-        "status": "Adopted",
-        "summary": "A successful motion that called the Federal Government's attention to the severe ecological degradation caused by soil erosion in the constituency. The motion urged relevant agencies like the Ecological Fund Office to implement urgent intervention projects to protect farmlands, infrastructure, and residential areas.",
+        "date": "2024-01-25",
+        "progress": 100,
     },
 ]
+
+# This is now the primary source for legislative data.
+# The old HON_ALI_SPONSORED_BILLS is deprecated.
+HON_ALI_SPONSORED_BILLS = SPONSORED_BILLS
+
 
 # ==============================================================================
 # STRATEGIC COMMITTEE CREDENTIALS
@@ -189,14 +163,12 @@ ANNOUNCEMENT_CACHE_FILE = "announcement_cache.txt"
 
 
 def initialize_system_states():
-    """Aggregated Session State Initializer Engine called natively by main.py."""
     if "global_scrolling_announcement" not in st.session_state:
         try:
             with open(ANNOUNCEMENT_CACHE_FILE, "r") as f:
                 st.session_state.global_scrolling_announcement = f.read()
         except FileNotFoundError:
             st.session_state.global_scrolling_announcement = "NOTICE: OFFICIAL DIGITAL LEDGER GATEWAY DEPLOYED FOR TRANSPARENT ACCOUNTABILITY."
-
     if "global_registry" not in st.session_state:
         st.session_state.global_registry = pd.DataFrame(columns=COLUMNS_STRUCTURE)
     if "strategic_committee_registry" not in st.session_state:
