@@ -1,10 +1,12 @@
 # ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - SECURE ROUTER MATRICES
 # Project: Balanga/Billiri Federal Constituency (Honourable Ali Isa JC, PhD)
-# File: main.py (V86.0 - Complete Index Syntax Resolution)
+# File: main.py (V95.0 - Bulletproof Self-Healing Architecture)
 # ==============================================================================
 
 import sys
+import os
+import base64
 import asyncio
 import warnings
 import streamlit as st
@@ -24,8 +26,13 @@ if sys.platform == "win32":
 
 from styling import inject_custom_css
 from ui_modules import render_hero_banner, render_marquee_header
-from registry import initialize_system_states, HON_TITLE
+from registry import initialize_system_states, HON_TITLE, HON_ALI_SPONSORED_BILLS
 import panels
+
+# ⚡ FORCE SYSTEM TO RELOAD PANELS TO CLEAR VENV STORAGE MEMORY LOCK BUGS
+import importlib
+
+importlib.reload(panels)
 
 # --- 2. PREMIUM VISUAL CANVAS PLATFORM SETUP ---
 st.set_page_config(
@@ -43,7 +50,7 @@ if "global_scrolling_announcement" not in st.session_state:
         f"This platform is designed for transparency, accountability, and direct engagement."
     )
 
-# --- 3. SYSTEM MODULE PATHWAYS ---
+# --- 3. SYSTEM MODULE PATHWAYS (UPDATED WITH ALL 13 ACTIVE HUBS) ---
 NAVIGATION_OPTIONS = [
     "🚀 LEGISLATIVE PROGRESS TRACKER",
     "🏛️ BEYOND RHETORICS PROJECT EXECUTION",
@@ -52,9 +59,12 @@ NAVIGATION_OPTIONS = [
     "🏛️ LEGISLATIVE FOOTPRINTS",
     "🛠️ SKILL VOCATION POOL",
     "🎓 STUDENT SCHOLARSHIP/GRANT",
+    "🔍 JOB VACANCY VERIFICATION",
+    "📂 FEDERAL & INDUSTRIAL GRANTS",
     "📦 PALLIATIVE ENROLLMENT",
     "💡 CV & ARTISAN VAULT",
     "🚨 COMMUNITY URGENT NEED",
+    "📜 CONSTITUENCY VOUCHING VERIFICATION",
 ]
 
 # 🏛️ EXACT STRUCTURAL MATRIX TO MATCH INTERNAL PANELS.PY CALL STRINGS
@@ -105,7 +115,7 @@ if st.sidebar.button(
     st.session_state.current_route = "DIRECT_COLLATION_GATE"
     st.rerun()
 
-st.sidebar.caption("Engine Architecture: v86.0 | Syntax Fix Applied")
+st.sidebar.caption("Engine Architecture: v95.0 | Safe-Guard Core Build")
 
 # --- 5. GLOBAL MAIN VIEWPORT MATRIX ---
 selected_route = st.session_state.current_route
@@ -114,8 +124,35 @@ selected_route = st.session_state.current_route
 # VIEW 1: PUBLIC GATEWAY DASHBOARD CHANNELS
 # ==============================================================================
 if selected_route == "HOME":
+    # 🏛️ STICKY PREMIUM WELCOME ANCHOR (UNTOP OF HERO BANNER CONTAINER)
+    st.markdown(
+        """
+        <div style="text-align: center; margin-bottom: 20px; padding: 5px 0;">
+            <h3 style="font-family: 'Cabinet Grotesk', 'Space Grotesk', sans-serif !important; font-weight: 800 !important; font-size: 1.35rem !important; letter-spacing: -0.01em !important; text-transform: none; margin: 0 !important; color: #FDF1C7 !important;">
+                Hon Ali Isa JC PhD welcomes you to this 
+                <span style="background: linear-gradient(135deg, #FFF6D6 0%, #D4AF37 60%, #AA7C11 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">
+                    "ENGAGING CONSTITUENCY ENGAGEMENT PORTAL"
+                </span>
+            </h3>
+            <p style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; font-size: 0.82rem !important; letter-spacing: 0.12em !important; text-transform: uppercase; color: #00E5FF !important; margin: 5px 0 0 0 !important; opacity: 0.95;">
+                🚀 LETS KEEP WINNING TOGETHER
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     render_hero_banner()
+
+    # ⚡ SHIFT MARQUEE DOWNWARD VIA STRUCTURAL HEADROOM MARGIN SPACING
+    st.markdown("<div style='margin-top: 35px;'></div>", unsafe_allow_html=True)
+
     render_marquee_header()
+
+    # Render Background Fragment Alerts if they exist in panels
+    if hasattr(panels, "render_top_vacancy_alerts"):
+        panels.render_top_vacancy_alerts()
+
     st.markdown(
         "<h2 class='nav-title' style='margin-top: 55px !important; color: #D4AF37 !important;'>CONSTITUENCY ENGAGEMENT CHANNELS</h2>",
         unsafe_allow_html=True,
@@ -226,7 +263,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
             x="Module Command Hub",
             y="Active Structural Records",
             horizontal=True,
-            width='stretch',
+            width="stretch",
         )
 
     with v_col2:
@@ -240,7 +277,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
                 ),
             },
             hide_index=True,
-            width='stretch',
+            width="stretch",
         )
 
     st.markdown("---")
@@ -275,7 +312,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 # ==============================================================================
 elif selected_route == "DIRECT_AGENT_GATE":
     render_marquee_header()
-    st.markdown("### 🗳️ Polling Unit Agent Portal Access Checkpoint")
+    st.markdown("### 🔒 Polling Unit Agent Portal Access Checkpoint")
     key_in = st.text_input(
         "Enter Field Agent Access Verification Key:",
         type="password",
@@ -352,14 +389,14 @@ elif selected_route == "DIRECT_COLLATION_GATE":
                 )
                 st.rerun()
             else:
-                st.error("🛑 ACCESS REJECTED: Invalid Collation Authority Signature.")
+                st.error("🛑 ACCESS REJECTED: Invalid Ward Collation Token.")
     with c_no:
         if st.button("↩️ Return Home", width="stretch", key="gate_collation_cancel"):
             st.session_state.current_route = "HOME"
             st.rerun()
 
 # ==============================================================================
-# VIEW 7: THE 14 EXECUTIVE COMMAND INTERNAL MODULE INTERFACES
+# VIEW 7: MULTI-CHANNEL INTERFACE ROUTING ENGINE
 # ==============================================================================
 else:
     render_marquee_header()
@@ -380,16 +417,147 @@ else:
 
     st.markdown("<hr class='nav-divider'>", unsafe_allow_html=True)
 
-    # Fixed syntax: changed from [[-1]] to single brackets [-1]
     exec_target = (
         selected_route.split(" ", 1)[-1] if " " in selected_route else selected_route
     )
 
     # --- Public Channel Execution Interface ---
     if selected_route == "🚀 LEGISLATIVE PROGRESS TRACKER":
-        panels.render_legislative_progress_panel()
+        # ⚡ AUTONOMIC SAFESTRAP FALLBACK TO BYPASS ALL VIRTUAL ENV CACHE LOCKED ISSUES
+        if hasattr(panels, "render_legislative_tracker"):
+            panels.render_legislative_tracker()
+        else:
+            st.markdown("## 🚀 LEGISLATIVE PROGRESS TRACKER")
+            st.caption(
+                f"Real-time breakdown of legislative instruments introduced by {HON_TITLE}."
+            )
+            st.divider()
+
+            # Dynamic KPI Telemetry Cards Layer
+            stat_c1, stat_c2, stat_c3 = st.columns(3)
+            with stat_c1:
+                st.markdown(
+                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; text-align: center;'>
+                        <h5 style='color: #D4AF37; margin:0; font-size:0.9rem;'>TOTAL INSTRUMENTS</h5>
+                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>6 Active</p>
+                       </div>""",
+                    unsafe_allow_html=True,
+                )
+            with stat_c2:
+                st.markdown(
+                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #00E5FF; text-align: center;'>
+                        <h5 style='color: #00E5FF; margin:0; font-size:0.9rem;'>PASSED MOTIONS</h5>
+                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>4 Cleared</p>
+                       </div>""",
+                    unsafe_allow_html=True,
+                )
+            with stat_c3:
+                st.markdown(
+                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #E2BB3C; text-align: center;'>
+                        <h5 style='color: #E2BB3C; margin:0; font-size:0.9rem;'>BILLS IN PROGRESS</h5>
+                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>2 Pending</p>
+                       </div>""",
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 📈 Pipeline Progression Metrics")
+
+            # Draw telemetry lists seamlessly directly using core system registry arrays
+            bills_source = (
+                panels.HON_ALI_SPONSORED_BILLS
+                if hasattr(panels, "HON_ALI_SPONSORED_BILLS")
+                else HON_ALI_SPONSORED_BILLS
+            )
+            for item in bills_source:
+                with st.container():
+                    col_left, col_right = st.columns([3, 1])
+                    with col_left:
+                        st.markdown(f"**📑 {item['title']}**")
+                        st.caption(f"Status Matrix Placement: {item['status']}")
+                    with col_right:
+                        st.progress(item["progress"] / 100.0)
+                        st.markdown(
+                            f"<p style='text-align: right; margin:0; font-size:0.85rem; color:#00E5FF;'>{item['progress']}% Complete</p>",
+                            unsafe_allow_html=True,
+                        )
+                    st.divider()
+
+    # --- BEYOND RHETORICS SUBFOLDER MEDIA CANVAS SWITCHER ENGINE ---
     elif selected_route == "🏛️ BEYOND RHETORICS PROJECT EXECUTION":
-        panels.render_project_verifications()
+        st.markdown("## 🦅 BEYOND RHETORICS: PROJECT VERIFICATION HUB")
+        st.caption(
+            "Reviewing scanned performance sheets and ground-truth validation archives for Hon. Ali Isa."
+        )
+
+        MEDIA_FOLDER = os.path.join(os.getcwd(), "MEDIA MEDIA MEDIA")
+
+        document_map = {
+            "📖 Document Cover Page": "Cover_compressed.pdf",
+            "📄 Page 1 - Project Milestone Overview": "1_compressed.pdf",
+            "📄 Page 2 - Infrastructure & Capital Allocations": "2_compressed.pdf",
+            "📄 Page 3 - Educational Interventions & Grants": "3_compressed.pdf",
+            "📄 Page 4 - Healthcare Programs & Welfare Sync": "4_compressed.pdf",
+            "📄 Page 5 - Empowerment Schemes Registry": "5_compressed.pdf",
+            "📄 Page 6 - Verifiable Performance Conclusion": "6_compressed.pdf",
+        }
+
+        st.markdown("### 🗂️ Select Verification Page to Display")
+        selected_doc_label = st.selectbox(
+            "Choose a ledger segment:", list(document_map.keys())
+        )
+
+        target_filename = document_map[selected_doc_label]
+        BUNDLE_PATH = os.path.join(MEDIA_FOLDER, target_filename)
+
+        if os.path.exists(BUNDLE_PATH):
+            with open(BUNDLE_PATH, "rb") as f:
+                pdf_bytes = f.read()
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.success(f"Connected to: **MEDIA MEDIA MEDIA/{target_filename}**")
+            with col2:
+                st.download_button(
+                    label="📥 Download This Page",
+                    data=pdf_bytes,
+                    file_name=target_filename,
+                    mime="application/pdf",
+                    width="stretch",
+                )
+
+            st.divider()
+
+            try:
+                base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+                pdf_display = f"""
+                    <iframe 
+                        src="data:application/pdf;base64,{base64_pdf}" 
+                        width="100%" 
+                        height="850px" 
+                        type="application/pdf"
+                        style="border: 2px solid #D4AF37; border-radius: 8px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
+                    >
+                    </iframe>
+                """
+                st.markdown(pdf_display, unsafe_allow_html=True)
+
+            except Exception as display_err:
+                st.error(
+                    f"❌ Render Exception: Failed to format data stream wrapper. {str(display_err)}"
+                )
+        else:
+            st.error(
+                f"❌ PATH LOOKUP ERROR: Could not locate target file at path: {BUNDLE_PATH}"
+            )
+            st.write("Checking directory layout configuration...")
+            if os.path.exists(MEDIA_FOLDER):
+                st.write("Files found inside your folder:", os.listdir(MEDIA_FOLDER))
+            else:
+                st.write(
+                    "🚨 'MEDIA MEDIA MEDIA' folder path cannot be identified from your app root position."
+                )
+
     elif selected_route == "🗣️ SPEAK WITH HON. ALI ISA JC DIRECTLY":
         panels.render_speak_directly_panel()
     elif selected_route == "🛡️ STRATEGIC COMMITTEES (MODULE 13)":
@@ -400,6 +568,15 @@ else:
         panels.render_skill_form()
     elif selected_route == "🎓 STUDENT SCHOLARSHIP/GRANT":
         panels.render_scholarship_form()
+
+    # --- UPGRADED PORTAL CHANNELS DISPATCHED TO CUSTOM PANELS ENGINE ---
+    elif selected_route == "🔍 JOB VACANCY VERIFICATION":
+        panels.render_job_verification_panel()
+    elif selected_route == "📂 FEDERAL & INDUSTRIAL GRANTS":
+        panels.render_grants_verification_panel()
+    elif selected_route == "📜 CONSTITUENCY VOUCHING VERIFICATION":
+        panels.render_vouching_verification_panel()
+
     elif selected_route == "📦 PALLIATIVE ENROLLMENT":
         panels.render_palliative_form()
     elif selected_route == "💡 CV & ARTISAN VAULT":
@@ -445,7 +622,7 @@ else:
             )
         with tier_cols[1]:
             st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #0A3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>🏛️ SENATORIAL</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>58.9%</p></div>",
+                "<div style='background: linear-gradient(135deg, #021024, #0xA3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>🏛️ SENATORIAL</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>58.9%</p></div>",
                 unsafe_allow_html=True,
             )
         with tier_cols[2]:
@@ -460,7 +637,7 @@ else:
             )
         with tier_cols[4]:
             st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #0A3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>📜 STATE ASSEMBLY</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>66.5%</p></div>",
+                "<div style='background: linear-gradient(135deg, #021024, #0xA3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>📜 STATE ASSEMBLY</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>66.5%</p></div>",
                 unsafe_allow_html=True,
             )
 

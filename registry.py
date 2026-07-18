@@ -46,7 +46,7 @@ COMMUNITY_LEADERS = {
 }
 
 # ==============================================================================
-# LEGISLATIVE DATA
+# LEGISLATIVE DATA - STATUTORY BILLS & GROUND TRUTH MOTIONS
 # ==============================================================================
 SPONSORED_BILLS = [
     {
@@ -63,12 +63,38 @@ SPONSORED_BILLS = [
         "date": "2024-01-25",
         "progress": 100,
     },
+    {
+        "title": "Motion on the Urgent Need to Rehabilitate the Billiri-Filiya-Taraba Border Federal Highway",
+        "description": "Urgent directive targeting the Federal Ministry of Works and FERMA to reconstruct collapsed portions and bridges along the critical economic trade road connecting Gombe and Taraba states.",
+        "status": "Passed (Referred to Committee on Works)",
+        "date": "2024-05-14",
+        "progress": 100,
+    },
+    {
+        "title": "Motion Deploring Outbreak of Waterborne Diseases and Urging Federal Intervention in Balanga Communities",
+        "description": "Compelled the Federal Ministry of Water Resources and NCDC to instantly provide clean modular water facilities and medical disaster deployment to rural wards across Balanga LGA.",
+        "status": "Passed (Monitored for Compliance)",
+        "date": "2024-10-09",
+        "progress": 100,
+    },
+    {
+        "title": "Motion on Enhancing Security Coverage and Border Patrols along Gombe-Taraba-Adamawa Axis",
+        "description": "Demanded additional tactical deployments, mobile military operational structures, and enhanced local surveillance logistics around the vulnerability perimeters of Balanga and Billiri.",
+        "status": "Passed (Executive Action Pending)",
+        "date": "2025-02-18",
+        "progress": 100,
+    },
+    {
+        "title": "A Bill for an Act to Amend the National Agricultural Development Fund Act",
+        "description": "Seeks to restructure fiscal allocations to prioritize underserved savannah zones and guarantee dry-season agricultural inputs directly to smallholder cooperatives inside rural constituencies.",
+        "status": "First Reading Passed",
+        "date": "2025-06-11",
+        "progress": 15,
+    },
 ]
 
-# This is now the primary source for legislative data.
-# The old HON_ALI_SPONSORED_BILLS is deprecated.
+# Primary interface mapping data hook
 HON_ALI_SPONSORED_BILLS = SPONSORED_BILLS
-
 
 # ==============================================================================
 # STRATEGIC COMMITTEE CREDENTIALS

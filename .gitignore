@@ -1,0 +1,5 @@
+
+__pycache__/
+*.pyc
+apply_premium_theme.py
+refactor_ui.py
