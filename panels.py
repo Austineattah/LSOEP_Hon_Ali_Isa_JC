@@ -1118,7 +1118,7 @@ def strategic_committees_panel():
             )
             if st.form_submit_button("Unlock Module", use_container_width=True):
                 # This password should be changed for production
-                if committee_key_input == "ali_isa_2027":
+                if committee_key_input == "congratulationshonali":
                     st.session_state.module_13_unlocked = True
                     st.rerun()
                 else:
