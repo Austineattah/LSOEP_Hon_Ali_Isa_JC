@@ -59,6 +59,12 @@ required. Back up the
 project and define retention/access procedures appropriate for the personal
 data collected.
 
+## Project verification documents
+
+Install the project's Python dependencies, including pypdfium2 and Pillow, and
+deploy the PDFs in the `MEDIA MEDIA MEDIA` directory. The viewer renders and
+caches the selected page, and the original PDF remains available to download.
+
 ## Local cache files
 
 Offline CSV/JSON caches are not the production store and should not contain
