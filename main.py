@@ -12,13 +12,12 @@ import warnings
 import streamlit as st
 import pandas as pd
 
+from auth import clear_passcode_access, is_logged_in, require_role
+from persistence import PersistenceError, list_submissions, submit_submission
+
 # --- 1. SEPARATED ROLE-BASED STATE INITIALIZATION ENGINE ---
 if "current_route" not in st.session_state:
     st.session_state.current_route = "HOME"
-if "admin_authenticated" not in st.session_state:
-    st.session_state.admin_authenticated = False
-if "agent_authenticated" not in st.session_state:
-    st.session_state.agent_authenticated = False
 
 if sys.platform == "win32":
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -29,11 +28,6 @@ from ui_modules import render_hero_banner, render_marquee_header
 from registry import initialize_system_states, HON_TITLE, HON_ALI_SPONSORED_BILLS
 import panels
 
-# ⚡ FORCE SYSTEM TO RELOAD PANELS TO CLEAR VENV STORAGE MEMORY LOCK BUGS
-import importlib
-
-importlib.reload(panels)
-
 # --- 2. PREMIUM VISUAL CANVAS PLATFORM SETUP ---
 st.set_page_config(
     page_title="LSOEP - Balanga/Billiri Federal Constituency",
@@ -43,12 +37,6 @@ st.set_page_config(
 )
 inject_custom_css()
 initialize_system_states()
-
-if "global_scrolling_announcement" not in st.session_state:
-    st.session_state.global_scrolling_announcement = (
-        f"Welcome to the official constituency outreach portal of {HON_TITLE}. "
-        f"This platform is designed for transparency, accountability, and direct engagement."
-    )
 
 # --- 3. SYSTEM MODULE PATHWAYS (UPDATED WITH ALL 13 ACTIVE HUBS) ---
 NAVIGATION_OPTIONS = [
@@ -85,7 +73,38 @@ ADMIN_COMMAND_HUBS = [
     "📋 Strategic Committee Progress Intake (M14)",
 ]
 
-NEW_PASSWORD = "ali2027"
+restricted_routes = {
+    "ADMIN_GATEWAY_CHECKPOINT",
+    "ADMIN_HUB_DASHBOARD",
+    "DIRECT_AGENT_GATE",
+    "STANDALONE_AGENT_INPUT_SCREEN",
+    "DIRECT_COLLATION_GATE",
+    "DIRECT_COLLATION_SCREEN",
+}
+initial_route = st.session_state.current_route
+is_restricted_route = initial_route in restricted_routes or any(
+    initial_route.endswith(module) or module in initial_route
+    for module in ADMIN_COMMAND_HUBS
+)
+if "announcement_loaded" not in st.session_state and not is_restricted_route:
+    default_announcement = (
+        f"Welcome to the official constituency outreach portal of {HON_TITLE}. "
+        "This platform is designed for transparency, accountability, and direct engagement."
+    )
+    try:
+        saved_announcements = list_submissions(["announcement"], limit=1)
+    except PersistenceError as exc:
+        st.session_state.global_scrolling_announcement = default_announcement
+        st.warning(f"The saved announcement could not be loaded: {exc}")
+    else:
+        st.session_state.global_scrolling_announcement = (
+            saved_announcements[0]["payload"].get("message", default_announcement)
+            if saved_announcements
+            else st.session_state.get(
+                "global_scrolling_announcement", default_announcement
+            )
+        )
+    st.session_state.announcement_loaded = True
 
 # --- 4. SIDEBAR ACCESS CONTROL PORTALS ---
 st.sidebar.markdown(
@@ -116,6 +135,12 @@ if st.sidebar.button(
     st.rerun()
 
 st.sidebar.caption("Engine Architecture: v95.0 | Safe-Guard Core Build")
+if is_logged_in():
+    st.sidebar.caption(f"Signed in as {st.user.get('email', 'user')}")
+    if st.sidebar.button("Sign out", key="oidc_logout"):
+        st.session_state.current_route = "HOME"
+        clear_passcode_access()
+        st.logout()
 
 # --- 5. GLOBAL MAIN VIEWPORT MATRIX ---
 selected_route = st.session_state.current_route
@@ -168,38 +193,20 @@ if selected_route == "HOME":
 # ==============================================================================
 elif selected_route == "ADMIN_GATEWAY_CHECKPOINT":
     render_marquee_header()
-    st.markdown("### 🔒 Executive Control Room Login Gate")
-    key_in = st.text_input(
-        "Enter Command Authorization Password Signature:",
-        type="password",
-        key="gate_admin_field",
-    )
-    c_ok, c_no = st.columns(2)
-    with c_ok:
-        if st.button(
-            "Authorize Command Signature", width="stretch", key="gate_admin_submit"
-        ):
-            if key_in == NEW_PASSWORD:
-                st.session_state.admin_authenticated = True
-                st.session_state.agent_authenticated = False
-                st.session_state.current_route = "ADMIN_HUB_DASHBOARD"
-                st.rerun()
-            else:
-                st.error("🛑 SECURITY ALERT: ACCESS SIGNATURE DECLINED.")
-    with c_no:
-        if st.button(
-            "↩️ Cancel and Return Home", width="stretch", key="gate_admin_cancel"
-        ):
-            st.session_state.current_route = "HOME"
-            st.rerun()
+    st.markdown("### Executive Control Room")
+    if require_role("admin"):
+        st.session_state.current_route = "ADMIN_HUB_DASHBOARD"
+        st.rerun()
+    if st.button("Return Home", key="gate_admin_cancel"):
+        st.session_state.current_route = "HOME"
+        st.rerun()
 
 # ==============================================================================
 # VIEW 3: ADMINISTRATIVE COMMAND HUBS GRAPHICS DASHBOARD
 # ==============================================================================
 elif selected_route == "ADMIN_HUB_DASHBOARD":
-    if not st.session_state.admin_authenticated:
-        st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
-        st.rerun()
+    if not require_role("admin"):
+        st.stop()
 
     render_marquee_header()
     st.markdown(
@@ -209,76 +216,78 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 
     st.markdown("### 📈 Real-Time Operational Telemetry Stream")
 
-    sync_metrics = {
-        "Master Registry Matrix": len(
-            st.session_state.get("palliative_registry", range(1420))
-        ),
-        "Citizen Feedback": len(st.session_state.get("feedback_records", range(342))),
-        "Admin Announcement Control": 1,
-        "Database Audit Diagnostics": len(
-            st.session_state.get("audit_logs", range(18))
-        ),
-        "RADAR Deduplication Interceptor": len(
-            st.session_state.get("intercepted_duplicates", range(89))
-        ),
-        "Scholar Talent Matrix": len(
-            st.session_state.get("scholarship_apps", range(560))
-        ),
-        "Vantedge Influencer Proportions": len(
-            st.session_state.get("influencer_links", range(120))
-        ),
-        "Live Election Analytical Sync": len(
-            st.session_state.get("election_feeds", range(1142))
-        ),
-        "Ground Truth Form EC8A Data": len(
-            st.session_state.get("ec8a_snapshots", range(45))
-        ),
-        "Bulk Data Sync Stream": len(st.session_state.get("sync_streams", range(240))),
-        "Executive Waiver Ledger": len(
-            st.session_state.get("waiver_records", range(12))
-        ),
-        "Legislative Progress Tracker": len(
-            st.session_state.get("tracked_bills", range(34))
-        ),
-        "Long-Term Momentum Monitoring": len(
-            st.session_state.get("momentum_points", range(85))
-        ),
-        "Strategic Committee Progress Intake (M14)": len(
-            st.session_state.get("committee_reports", range(68))
-        ),
-    }
+    try:
+        saved_records = list_submissions()
+    except PersistenceError as exc:
+        st.error(f"Administrative telemetry is unavailable: {exc}")
+        saved_records = None
 
-    chart_df = pd.DataFrame(
-        [
-            {"Module Command Hub": name, "Active Structural Records": count}
-            for name, count in sync_metrics.items()
-        ]
-    )
+    sync_metrics = {}
+    if saved_records is not None:
+        if not saved_records:
+            st.info("No saved submissions are available yet.")
 
-    v_col1, v_col2 = st.columns(2)
-    with v_col1:
-        st.markdown("#### 📊 Absolute System Transaction Volumes")
-        st.bar_chart(
-            data=chart_df,
-            x="Module Command Hub",
-            y="Active Structural Records",
-            horizontal=True,
-            width="stretch",
+        record_counts = {}
+        for record in saved_records:
+            record_counts[record["submission_type"]] = (
+                record_counts.get(record["submission_type"], 0) + 1
+            )
+        sync_metrics = {
+            "Master Registry Matrix": sum(
+                record_counts.get(kind, 0)
+                for kind in [
+                    "palliative_direct",
+                    "palliative_vouching",
+                    "skill_application",
+                    "scholarship_application",
+                    "cv_application",
+                ]
+            ),
+            "Citizen Feedback": record_counts.get("speak_direct", 0),
+            "Admin Announcement Control": record_counts.get("announcement", 0),
+            "Database Audit Diagnostics": len(saved_records),
+            "Scholar Talent Matrix": record_counts.get("scholarship_application", 0),
+            "Live Election Analytical Sync": record_counts.get(
+                "polling_unit_tally", 0
+            ),
+            "Ground Truth Form EC8A Data": record_counts.get("ward_collation", 0),
+            "Legislative Progress Tracker": len(HON_ALI_SPONSORED_BILLS),
+            "Strategic Committee Progress Intake (M14)": record_counts.get(
+                "committee_compliance", 0
+            ),
+        }
+
+        chart_df = pd.DataFrame(
+            [
+                {"Module Command Hub": name, "Active Structural Records": count}
+                for name, count in sync_metrics.items()
+            ]
         )
 
-    with v_col2:
-        st.markdown("#### 🧩 Executive Operational Resource Allocation")
-        st.dataframe(
-            chart_df.sort_values(by="Active Structural Records", ascending=False),
-            column_config={
-                "Module Command Hub": "Administrative Core Segment",
-                "Active Structural Records": st.column_config.ProgressColumn(
-                    "Saturation Density", format="%d", min_value=0, max_value=1500
-                ),
-            },
-            hide_index=True,
-            width="stretch",
-        )
+        v_col1, v_col2 = st.columns(2)
+        with v_col1:
+            st.markdown("#### 📊 Absolute System Transaction Volumes")
+            st.bar_chart(
+                data=chart_df,
+                x="Module Command Hub",
+                y="Active Structural Records",
+                horizontal=True,
+                width="stretch",
+            )
+
+        with v_col2:
+            st.markdown("#### 🧩 Executive Operational Resource Allocation")
+            st.dataframe(
+                chart_df.sort_values(by="Active Structural Records", ascending=False),
+                column_config={
+                    "Module Command Hub": "Administrative Core Segment",
+                    "Active Structural Records": st.column_config.ProgressColumn(
+                        "Saturation Density", format="%d", min_value=0, max_value=1500
+                    ),
+                },
+                hide_index=True,
+                width="stretch",
+            )
 
     st.markdown("---")
     st.markdown("### 🎛️ Command Activation Grid Matrix")
@@ -303,8 +312,10 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
     if st.button(
         "↩️ Close Admin Hub and Logout", width="stretch", key="admin_hub_logout_btn"
     ):
-        st.session_state.admin_authenticated = False
         st.session_state.current_route = "HOME"
+        clear_passcode_access()
+        if is_logged_in():
+            st.logout()
         st.rerun()
 
 # ==============================================================================
@@ -313,35 +324,19 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 elif selected_route == "DIRECT_AGENT_GATE":
     render_marquee_header()
     st.markdown("### 🔒 Polling Unit Agent Portal Access Checkpoint")
-    key_in = st.text_input(
-        "Enter Field Agent Access Verification Key:",
-        type="password",
-        key="gate_agent_field",
-    )
-    c_ok, c_no = st.columns(2)
-    with c_ok:
-        if st.button(
-            "Verify Agent Identity Key", width="stretch", key="gate_agent_submit"
-        ):
-            if key_in == NEW_PASSWORD:
-                st.session_state.agent_authenticated = True
-                st.session_state.admin_authenticated = False
-                st.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
-                st.rerun()
-            else:
-                st.error("🛑 ACCESS REJECTED: Invalid Agent Authorization Signature.")
-    with c_no:
-        if st.button("↩️ Return Home", width="stretch", key="gate_agent_cancel"):
-            st.session_state.current_route = "HOME"
-            st.rerun()
+    if require_role("agent"):
+        st.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
+        st.rerun()
+    if st.button("Return Home", key="gate_agent_cancel"):
+        st.session_state.current_route = "HOME"
+        st.rerun()
 
 # ==============================================================================
 # VIEW 5: STANDALONE ISOLATED FIELD AGENT ENVELOPE
 # ==============================================================================
 elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
-    if not st.session_state.agent_authenticated:
-        st.session_state.current_route = "DIRECT_AGENT_GATE"
-        st.rerun()
+    if not require_role("agent"):
+        st.stop()
 
     render_marquee_header()
     st.markdown(
@@ -353,15 +348,14 @@ elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
     )
     st.markdown("---")
 
-    try:
-        panels.agent_panel(conn=None)
-    except TypeError:
-        panels.agent_panel()
+    panels.agent_panel()
 
     st.markdown("---")
     if st.button("↩️ Securely Terminate Agent Session & Exit", width="stretch"):
-        st.session_state.agent_authenticated = False
         st.session_state.current_route = "HOME"
+        clear_passcode_access()
+        if is_logged_in():
+            st.logout()
         st.rerun()
 
 # ==============================================================================
@@ -370,39 +364,34 @@ elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
 elif selected_route == "DIRECT_COLLATION_GATE":
     render_marquee_header()
     st.markdown("### 🛡️ Ward Collation Command Security Checkpoint")
-    key_in = st.text_input(
-        "Enter Ward Collation Authority Token Key:",
-        type="password",
-        key="gate_collation_field",
-    )
-    c_ok, c_no = st.columns(2)
-    with c_ok:
-        if st.button(
-            "Verify Collation Authority Token",
-            width="stretch",
-            key="gate_collation_submit",
-        ):
-            if key_in == NEW_PASSWORD:
-                st.session_state.admin_authenticated = True
-                st.session_state.current_route = (
-                    "📋 Strategic Committee Progress Intake (M14)"
-                )
-                st.rerun()
-            else:
-                st.error("🛑 ACCESS REJECTED: Invalid Ward Collation Token.")
-    with c_no:
-        if st.button("↩️ Return Home", width="stretch", key="gate_collation_cancel"):
-            st.session_state.current_route = "HOME"
-            st.rerun()
+    if require_role("collation"):
+        st.session_state.current_route = "DIRECT_COLLATION_SCREEN"
+        st.rerun()
+    if st.button("Return Home", key="gate_collation_cancel"):
+        st.session_state.current_route = "HOME"
+        st.rerun()
+
+elif selected_route == "DIRECT_COLLATION_SCREEN":
+    if not require_role("collation"):
+        st.stop()
+    render_marquee_header()
+    if st.button("Return Home", key="collation_return_home"):
+        st.session_state.current_route = "HOME"
+        clear_passcode_access()
+        st.rerun()
+    panels.ward_collation_officer_panel()
 
 # ==============================================================================
 # VIEW 7: MULTI-CHANNEL INTERFACE ROUTING ENGINE
 # ==============================================================================
 else:
-    render_marquee_header()
     is_admin_module = selected_route in ADMIN_COMMAND_HUBS or any(
         selected_route.endswith(m) or m in selected_route for m in ADMIN_COMMAND_HUBS
     )
+    if is_admin_module and not require_role("admin"):
+        st.stop()
+
+    render_marquee_header()
     back_label = (
         "↩ ... Return to Admin Hub Matrix"
         if is_admin_module
@@ -423,65 +412,7 @@ else:
 
     # --- Public Channel Execution Interface ---
     if selected_route == "🚀 LEGISLATIVE PROGRESS TRACKER":
-        # ⚡ AUTONOMIC SAFESTRAP FALLBACK TO BYPASS ALL VIRTUAL ENV CACHE LOCKED ISSUES
-        if hasattr(panels, "render_legislative_tracker"):
-            panels.render_legislative_tracker()
-        else:
-            st.markdown("## 🚀 LEGISLATIVE PROGRESS TRACKER")
-            st.caption(
-                f"Real-time breakdown of legislative instruments introduced by {HON_TITLE}."
-            )
-            st.divider()
-
-            # Dynamic KPI Telemetry Cards Layer
-            stat_c1, stat_c2, stat_c3 = st.columns(3)
-            with stat_c1:
-                st.markdown(
-                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; text-align: center;'>
-                        <h5 style='color: #D4AF37; margin:0; font-size:0.9rem;'>TOTAL INSTRUMENTS</h5>
-                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>6 Active</p>
-                       </div>""",
-                    unsafe_allow_html=True,
-                )
-            with stat_c2:
-                st.markdown(
-                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #00E5FF; text-align: center;'>
-                        <h5 style='color: #00E5FF; margin:0; font-size:0.9rem;'>PASSED MOTIONS</h5>
-                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>4 Cleared</p>
-                       </div>""",
-                    unsafe_allow_html=True,
-                )
-            with stat_c3:
-                st.markdown(
-                    """<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 15px; border-radius: 8px; border-left: 4px solid #E2BB3C; text-align: center;'>
-                        <h5 style='color: #E2BB3C; margin:0; font-size:0.9rem;'>BILLS IN PROGRESS</h5>
-                        <p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:5px 0 0 0;'>2 Pending</p>
-                       </div>""",
-                    unsafe_allow_html=True,
-                )
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### 📈 Pipeline Progression Metrics")
-
-            # Draw telemetry lists seamlessly directly using core system registry arrays
-            bills_source = (
-                panels.HON_ALI_SPONSORED_BILLS
-                if hasattr(panels, "HON_ALI_SPONSORED_BILLS")
-                else HON_ALI_SPONSORED_BILLS
-            )
-            for item in bills_source:
-                with st.container():
-                    col_left, col_right = st.columns([3, 1])
-                    with col_left:
-                        st.markdown(f"**📑 {item['title']}**")
-                        st.caption(f"Status Matrix Placement: {item['status']}")
-                    with col_right:
-                        st.progress(item["progress"] / 100.0)
-                        st.markdown(
-                            f"<p style='text-align: right; margin:0; font-size:0.85rem; color:#00E5FF;'>{item['progress']}% Complete</p>",
-                            unsafe_allow_html=True,
-                        )
-                    st.divider()
+        panels.render_progress_tracker()
 
     # --- BEYOND RHETORICS SUBFOLDER MEDIA CANVAS SWITCHER ENGINE ---
     elif selected_route == "🏛️ BEYOND RHETORICS PROJECT EXECUTION":
@@ -528,24 +459,18 @@ else:
 
             st.divider()
 
-            try:
-                base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-                pdf_display = f"""
-                    <iframe 
-                        src="data:application/pdf;base64,{base64_pdf}" 
-                        width="100%" 
-                        height="850px" 
-                        type="application/pdf"
-                        style="border: 2px solid #D4AF37; border-radius: 8px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
-                    >
-                    </iframe>
-                """
-                st.markdown(pdf_display, unsafe_allow_html=True)
-
-            except Exception as display_err:
-                st.error(
-                    f"❌ Render Exception: Failed to format data stream wrapper. {str(display_err)}"
-                )
+            base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+            pdf_display = f"""
+                <iframe
+                    src="data:application/pdf;base64,{base64_pdf}"
+                    width="100%"
+                    height="850px"
+                    type="application/pdf"
+                    style="border: 2px solid #D4AF37; border-radius: 8px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
+                >
+                </iframe>
+            """
+            st.markdown(pdf_display, unsafe_allow_html=True)
         else:
             st.error(
                 f"❌ PATH LOOKUP ERROR: Could not locate target file at path: {BUNDLE_PATH}"
@@ -597,184 +522,25 @@ else:
         )
         if st.button("🚀 Push Live to Portal Ticker", width="stretch"):
             if new_broadcast_msg.strip():
-                st.session_state.global_scrolling_announcement = (
-                    new_broadcast_msg.strip()
-                )
-                st.success("🎉 BROADCAST SYNCHRONIZED!")
-                st.rerun()
+                try:
+                    submit_submission(
+                        "announcement", {"message": new_broadcast_msg.strip()}
+                    )
+                except PersistenceError as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state.global_scrolling_announcement = (
+                        new_broadcast_msg.strip()
+                    )
+                    st.success("The announcement was saved and published.")
+                    st.rerun()
 
-    # --- 🗳️ MODULE 8: LIVE ELECTION ANALYTICAL SYNC ---
     elif exec_target == "Live Election Analytical Sync":
-        st.markdown(
-            "<h2 style='color: #D4AF37; margin-bottom:0;'>🗳️ LIVE ELECTORAL ANALYTICAL SYNC</h2>",
-            unsafe_allow_html=True,
-        )
-        st.caption(
-            "Constituency Data Stream Optimization | Real-Time Telemetry Mapping Engine"
-        )
-        st.markdown("---")
-
-        tier_cols = st.columns(5)
-        with tier_cols[0]:
-            st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 20px; border-radius: 12px; border-left: 5px solid #D4AF37; text-align: center;'><h5 style='color: #D4AF37; margin:0; font-size:1rem; font-weight:700;'>🦅 PRESIDENTIAL</h5><hr style='margin: 10px 0; border-color: rgba(214,175,55,0.2);'><p style='color: #88F3FF; font-size: 1.8rem; font-weight: 800; margin:0;'>64.2%</p></div>",
-                unsafe_allow_html=True,
-            )
-        with tier_cols[1]:
-            st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #0xA3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>🏛️ SENATORIAL</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>58.9%</p></div>",
-                unsafe_allow_html=True,
-            )
-        with tier_cols[2]:
-            st.markdown(
-                "<div style='background: linear-gradient(135deg, #0B3C5D, #1D5B8A); padding: 20px; border-radius: 12px; border: 2px solid #D4AF37; text-align: center;'><h5 style='color: #D4AF37; margin:0; font-size:1.1rem; font-weight:800;'>🏛️ HOUSE OF REPS</h5><hr style='margin: 10px 0; border-color: #D4AF37;'><p style='color: #FFF; font-size: 2.2rem; font-weight: 900; margin:0;'>71.4%</p><span style='color: #FFF; font-size: 0.75rem;'>BALANGA / BILLIRI PROJECTION</span></div>",
-                unsafe_allow_html=True,
-            )
-        with tier_cols[3]:
-            st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #05244C); padding: 20px; border-radius: 12px; border-left: 5px solid #D4AF37; text-align: center;'><h5 style='color: #D4AF37; margin:0; font-size:1rem; font-weight:700;'>🏰 GUBERNATORIAL</h5><hr style='margin: 10px 0; border-color: rgba(214,175,55,0.2);'><p style='color: #88F3FF; font-size: 1.8rem; font-weight: 800; margin:0;'>62.8%</p></div>",
-                unsafe_allow_html=True,
-            )
-        with tier_cols[4]:
-            st.markdown(
-                "<div style='background: linear-gradient(135deg, #021024, #0xA3663); padding: 20px; border-radius: 12px; border-left: 5px solid #00E5FF; text-align: center;'><h5 style='color: #00E5FF; margin:0; font-size:1rem; font-weight:700;'>📜 STATE ASSEMBLY</h5><hr style='margin: 10px 0; border-color: rgba(0,229,255,0.2);'><p style='color: #FFFFFF; font-size: 1.8rem; font-weight: 800; margin:0;'>66.5%</p></div>",
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("---")
-        st.markdown("### 🔍 Live Cascading Geographic Query Terminal")
-
-        GEO_DICTIONARY = {
-            "Gombe": {
-                "Balanga": [
-                    "Bambam",
-                    "Bangu",
-                    "Dadiya",
-                    "Galam",
-                    "Tal",
-                    "Siri",
-                    "Mwona",
-                    "Swa",
-                    "Gelengu",
-                    "Rembe",
-                ],
-                "Billiri": [
-                    "Billiri-North",
-                    "Billiri-South",
-                    "Bare",
-                    "Kantali",
-                    "Tanglang",
-                    "Todi",
-                    "Sansani",
-                    "Tal",
-                    "Amtawalam",
-                ],
-                "Akko": [
-                    "Gona",
-                    "Kumo Central",
-                    "Kumo East",
-                    "Kumo West",
-                    "Pindiga",
-                    "Kashere",
-                ],
-                "Dukku": ["Dukku Central", "Dukku West", "Wuro Kamu", "Zaune"],
-                "Funakaye": ["Bajoga North", "Bajoga South", "Ashaka", "Bage"],
-                "Gombe": [
-                    "Gombe Central",
-                    "Gombe East",
-                    "Gombe North",
-                    "Gombe South",
-                    "Jekadafari",
-                ],
-                "Kaltungo": ["Kaltungo West", "Kaltungo East", "Awak", "Ture"],
-                "Kwami": ["Kwami", "Malam Sidi", "Gadam", "Doho"],
-                "Nafada": ["Nafada East", "Nafada West", "Birnin Fulani"],
-                "Shongom": ["Boh", "Lalaipido", "Fillya", "Gwandum"],
-                "Yamaltu/Deba": ["Deba", "Yamaltu", "Kano", "Wade"],
-            },
-            "Federal Capital Territory": {
-                "AMAC": ["Garki", "Wuse", "Asokoro", "Maitama", "Gwarinpa"],
-                "Bwari": ["Bwari Central", "Kubwa", "Ushafa", "Dutse Alhaji"],
-                "Gwagwalada": ["Gwagwalada Central", "Kuje", "Abaji", "Kwali"],
-            },
-        }
-
-        search_cols = st.columns(3)
-        with search_cols[0]:
-            state_selection = st.selectbox(
-                "🗺️ Step 1: Select State Profile",
-                options=["", "Gombe", "Federal Capital Territory"],
-            )
-        with search_cols[1]:
-            if state_selection and state_selection in GEO_DICTIONARY:
-                lga_selection = st.selectbox(
-                    "📊 Step 2: Linked LGAs Auto-Populated",
-                    options=list(GEO_DICTIONARY[state_selection].keys()),
-                )
-            else:
-                lga_selection = st.selectbox(
-                    "📊 Step 2: Linked LGAs Auto-Populated", options=[], disabled=True
-                )
-        with search_cols[2]:
-            if state_selection and lga_selection:
-                ward_selection = st.selectbox(
-                    "🧩 Step 3: Linked Wards Auto-Populated",
-                    options=GEO_DICTIONARY[state_selection][lga_selection],
-                )
-            else:
-                ward_selection = st.selectbox(
-                    "🧩 Step 3: Linked Wards Auto-Populated", options=[], disabled=True
-                )
-
-        if state_selection and lga_selection and ward_selection:
-            st.markdown("---")
-            st.markdown(
-                f"#### 🛰️ Target Telemetry Summary: {state_selection} ➔ {lga_selection} ➔ {ward_selection}"
-            )
-            stat_c1, stat_c2, stat_c3, stat_c4 = st.columns(4)
-            stat_c1.metric(label="Registered Voters", value="12,450")
-            stat_c2.metric(label="Total Votes Tracked", value="8,892", delta="+4.2%")
-            stat_c3.metric(label="Form EC8A Logged", value="24 PUs")
-            stat_c4.metric(label="Audit Status", value="✅ CERTIFIED SECURE")
-
-        st.markdown("---")
-        with st.expander(
-            "📊 View Background Historical Verification Registry Database Partition Array",
-            expanded=False,
-        ):
-            try:
-                panels.main_dashboard(conn=None)
-            except TypeError:
-                panels.main_dashboard()
+        panels.render_election_analytical_sync()
 
     # --- 🔒 MODULE 9: EXCLUSIVE GROUND TRUTH LITIGATION MODULE ---
     elif exec_target == "Ground Truth Form EC8A Data":
-        if not st.session_state.admin_authenticated:
-            st.error(
-                "🛑 ACCESS REJECTED: This module is restricted to designated internal Admin Officers."
-            )
-            st.stop()
-
-        st.markdown(
-            "<h2 style='color: #D4AF37;'>🏛️ FORENSIC LITIGATION DATA ACQUISITION HUB</h2>",
-            unsafe_allow_html=True,
-        )
-        st.info(
-            "🔒 Authorized Executive View: Form EC8A uploads strictly collected for potential court litigation evidence profiles."
-        )
-        st.markdown("---")
-
-        st.markdown("### 📷 Execute Forensic Document Canvas")
-        admin_cam = st.camera_input(
-            "📸 EXECUTE LITIGATION SNAPSHOT CAPTURE (ADMIN AUDIT MODE)"
-        )
-        if admin_cam:
-            st.success("⚡ FORENSIC PROFILE SECURED IN ENCRYPTED STORAGE ARRAYS")
-            st.image(
-                admin_cam,
-                caption="Court-Ready Verification Target Image Preview",
-                width=400,
-            )
+        panels.render_admin_submissions(["ward_collation", "polling_unit_tally"])
 
     # --- 📋 MODULE 14: STRATEGIC COMMITTEE PROGRESS INTAKE ---
     elif exec_target == "Strategic Committee Progress Intake (M14)":
@@ -782,49 +548,34 @@ else:
 
     # --- 📐 SOLID STATE ROUTE MAPPINGS FOR INDIVIDUAL ADMIN TILES ---
     elif exec_target == "Master Registry Matrix":
-        try:
-            panels.master_registry_matrix()
-        except AttributeError:
-            panels.main_dashboard()
+        panels.render_admin_submissions(
+            [
+                "palliative_direct",
+                "palliative_vouching",
+                "skill_application",
+                "scholarship_application",
+                "cv_application",
+                "committee_member",
+            ]
+        )
     elif exec_target == "Citizen Feedback":
-        try:
-            panels.citizen_feedback()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
+        panels.render_admin_submissions(["speak_direct", "community_urgent_need"])
     elif exec_target == "Database Audit Diagnostics":
-        try:
-            panels.database_audit_diagnostics()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
+        panels.render_admin_submissions()
     elif exec_target == "RADAR Deduplication Interceptor":
-        try:
-            panels.radar_deduplication_interceptor()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
+        st.info(
+            "The database enforces duplicate prevention per submission type and normalized identity. "
+            "No separate duplicate-review queue is implemented yet."
+        )
     elif exec_target == "Scholar Talent Matrix":
-        try:
-            panels.scholar_talent_matrix()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
-    elif exec_target == "Vantedge Influencer Proportions":
-        try:
-            panels.vantedge_influencer_proportions()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
-    elif exec_target == "Bulk Data Sync Stream":
-        try:
-            panels.bulk_data_sync_stream()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
-    elif exec_target == "Executive Waiver Ledger":
-        try:
-            panels.executive_waiver_ledger()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
-    elif exec_target == "Long-Term Momentum Monitoring":
-        try:
-            panels.long_term_momentum_monitoring()
-        except AttributeError:
-            st.info(f"Connected to: {exec_target}")
+        panels.render_admin_submissions(
+            ["skill_application", "scholarship_application", "cv_application"]
+        )
+    elif exec_target == "Legislative Progress Tracker":
+        panels.render_progress_tracker()
+    elif exec_target == "Strategic Committee Progress Intake (M14)":
+        panels.render_committee_compliance_form()
     else:
-        st.info(f"🔒 Secure Operational Core Module Engaged: **{exec_target}**")
+        st.warning(
+            f"{exec_target} is not implemented yet; no live data is available in this module."
+        )

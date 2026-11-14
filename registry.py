@@ -6,8 +6,6 @@
 
 import streamlit as st
 import pandas as pd
-import os
-import json
 
 # Institutional Software Display Branding Variables
 HON_TITLE = "HONOURABLE ALI ISA JC, PhD"
@@ -32,17 +30,6 @@ GEOGRAPHY = {
 LGA_WARD_DATA = {
     "BALANGA": GEOGRAPHY["BALANGA"],
     "BILLIRI": GEOGRAPHY["BILLIRI"],
-}
-
-# 🏛️ EXPLICIT COMMUNITY STAKEHOLDER DIRECTORY
-COMMUNITY_LEADERS = {
-    "HONOURABLE ALI ISA JC, PhD": {
-        "contact": "08000000000",
-        "nin": "00000000000",
-        "lga": "BILLIRI",
-        "ward": "Billiri-South",
-        "portfolio": "Federal Representative, Balanga/Billiri",
-    },
 }
 
 # ==============================================================================
@@ -96,9 +83,6 @@ SPONSORED_BILLS = [
 # Primary interface mapping data hook
 HON_ALI_SPONSORED_BILLS = SPONSORED_BILLS
 
-# ==============================================================================
-# STRATEGIC COMMITTEE CREDENTIALS
-# ==============================================================================
 STRATEGIC_COMMITTEE_NAMES = [
     "Committee 1: Finance & Appropriations",
     "Committee 2: Healthcare & Social Welfare",
@@ -111,19 +95,6 @@ STRATEGIC_COMMITTEE_NAMES = [
     "Committee 9: Legislative Liaison & Compliance",
     "Committee 10: Constituency Outreach & Engagement",
 ]
-
-STRATEGIC_COMMITTEE_PASSWORDS = {
-    "Committee 1: Finance & Appropriations": "ten",
-    "Committee 2: Healthcare & Social Welfare": "nine",
-    "Committee 3: Education & Human Capital": "eight",
-    "Committee 4: Infrastructure & Public Works": "seven",
-    "Committee 5: Agriculture & Rural Development": "six",
-    "Committee 6: Security & Community Affairs": "five",
-    "Committee 7: Youth & Sports Development": "four",
-    "Committee 8: Women Affairs & Inclusion": "three",
-    "Committee 9: Legislative Liaison & Compliance": "two",
-    "Committee 10: Constituency Outreach & Engagement": "one",
-}
 
 PROJECT_PARTITION_ID = "Balanga/Billiri_GOMBE"
 COLUMNS_STRUCTURE = [
@@ -215,5 +186,3 @@ def initialize_system_states():
         st.session_state.radar_threat = False
     if "threat_msg" not in st.session_state:
         st.session_state.threat_msg = ""
-    if "authenticated_committee" not in st.session_state:
-        st.session_state.authenticated_committee = None

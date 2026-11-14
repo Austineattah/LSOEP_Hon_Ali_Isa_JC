@@ -8,7 +8,8 @@ import streamlit as st
 import pandas as pd
 import base64
 import os
-from registry import HON_TITLE, initialize_system_states
+import html
+from registry import HON_TITLE
 
 
 @st.cache_data
@@ -20,7 +21,7 @@ def get_image_as_base64(path):
         with open(path, "rb") as f:
             data = f.read()
         return base64.b64encode(data).decode()
-    except Exception:
+    except OSError:
         return None
 
 
@@ -36,7 +37,7 @@ def resolve_image_source(filename, fallback_url):
                     b64 = get_image_as_base64(full_path)
                     if b64:
                         return f"data:image/png;base64,{b64}"
-        except Exception:
+        except OSError:
             pass
     return fallback_url
 
@@ -150,6 +151,7 @@ def render_marquee_header():
         f"Welcome to the official constituency outreach portal of {HON_TITLE}. This platform is designed for transparency, accountability, and direct engagement.",
     )
     long_announcement = (announcement + " • ") * 3
+    safe_announcement = html.escape(long_announcement)
     st.markdown(
         f"""
         <style>
@@ -157,7 +159,7 @@ def render_marquee_header():
         .marquee-content {{ display: inline-block; padding-left: 100%; animation: marquee 90s linear infinite; font-size: 1.1rem; font-weight: 600; letter-spacing: 1.5px; color: #EAEAEA; }}
         @keyframes marquee {{ 0% {{ transform: translateX(0); }} 100% {{ transform: translateX(-100%); }} }}
         </style>
-        <div class="marquee-container"><div class="marquee-content">{long_announcement}</div></div>
+        <div class="marquee-container"><div class="marquee-content">{safe_announcement}</div></div>
         """,
         unsafe_allow_html=True,
     )

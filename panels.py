@@ -2,27 +2,37 @@ import streamlit as st
 import pandas as pd
 import datetime
 import time
-import base64
-import requests
 import os
-import urllib.request
-import plotly.graph_objects as go
-import sqlite3
 import html
 import re
 
+from auth import has_committee_access, is_logged_in, render_login_prompt, require_role
+from persistence import PersistenceError, list_submissions, submit_submission
 from registry import (
     LGA_WARD_DATA,
-    GEOGRAPHY,
-    STRATEGIC_COMMITTEE_COLS,
-    COMMUNITY_LEADERS,
-    COLUMNS_STRUCTURE,
     STRATEGIC_COMMITTEE_NAMES,
-    STRATEGIC_COMMITTEE_PASSWORDS,
-    ANNOUNCEMENT_CACHE_FILE,
     HON_ALI_SPONSORED_BILLS,
     HON_TITLE,
 )
+
+
+def _commit_submission(submission_type, payload, uploads=None, dedupe_fields=None):
+    try:
+        submit_submission(
+            submission_type,
+            payload,
+            uploads=uploads,
+            dedupe_fields=dedupe_fields,
+        )
+    except PersistenceError as exc:
+        st.error(str(exc))
+        return False
+    return True
+
+
+def _valid_phone(value):
+    digits = re.sub(r"\D", "", value)
+    return 10 <= len(digits) <= 15
 
 
 def render_constituency_engagement_channels():
@@ -86,7 +96,7 @@ def render_constituency_engagement_channels():
         if st.button(
             button_label,
             key=f"eng_chan_btn_{channel['route']}",
-            use_container_width=True,
+            width="stretch",
         ):
             st.session_state.current_route = channel["route"]
             st.rerun()
@@ -109,7 +119,8 @@ def render_global_announcement_marquee():
                 content = f.read().strip()
                 if content:
                     message = content
-    except Exception:
+    except OSError as exc:
+        st.warning(f"The announcement file could not be read: {exc}")
         message = default_message
 
     clean_message = html.escape(message)
@@ -139,52 +150,23 @@ def render_admin_announcement_control():
         )
 
         if st.form_submit_button(
-            "🔒 LOCK ANNOUNCEMENT AND RE-PROPAGATE MARQUEE", use_container_width=True
+            "🔒 LOCK ANNOUNCEMENT AND RE-PROPAGATE MARQUEE", width="stretch"
         ):
             if new_ticker.strip():
                 try:
-                    import re
-
-                    clean_text = re.sub("<[^<]+?>", "", new_ticker.strip())
-
-                    with open("announcement.txt", "w", encoding="utf-8") as f:
-                        f.write(clean_text)
-
-                    st.success(
-                        "✓ Global marquee variables updated. New scrolling announcement loop active!"
+                    submit_submission(
+                        "announcement", {"message": new_ticker.strip()}
                     )
-                    time.sleep(0.4)
+                except PersistenceError as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state.global_scrolling_announcement = (
+                        new_ticker.strip()
+                    )
+                    st.success("The announcement was saved and published.")
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to commit announcement file: {e}")
             else:
                 st.warning("Please specify a valid text announcement.")
-
-
-# Corrected National Geographic Matrix to include the full Gombe South data
-GEO_MATRIX = st.session_state.get("DYNAMIC_GEO_MATRIX", {})
-
-
-if "live_scores" not in st.session_state:
-    st.session_state.live_scores = {
-        "PRESIDENTIAL": {"PDP": 14520, "APC": 12110, "LP": 4320, "NNPP": 850},
-        "SENATORIAL": {"PDP": 16180, "APC": 11400, "LP": 2100, "ADC": 980},
-        "FEDERAL HOUSE": {"PDP": 18240, "APC": 9890, "LP": 1150, "SDP": 420},
-        "GOVERNORSHIP": {"PDP": 15410, "APC": 13900, "LP": 3200, "NNPP": 710},
-        "STATE HOUSE": {"PDP": 17110, "APC": 10250, "LP": 940, "APGA": 310},
-    }
-
-
-def sync_election_tally_engine():
-    pass
-
-
-def render_pie_chart(title):
-    labels = ["Category A", "Category B", "Category C", "Category D"]
-    values = [4500, 2500, 1053, 500]
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.3)])
-    fig.update_layout(title_text=title, showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
 
 
 def render_skill_form():
@@ -257,29 +239,49 @@ def render_skill_form():
 
         sv_stmt = st.text_area("Candidate Skill Interest Statement Details")
         sv_cam = st.camera_input("Biometric Security Verification Core Scan")
-        st.markdown("##### 🛡️ LEADERSHIP VOUCHING TIER INTERFACE")
-        v_leader_name = st.selectbox(
-            "Select Vouching Community Leader",
-            list(COMMUNITY_LEADERS.keys()),
-            key="skill_leader_select",
-        )
-        v_leader_details = COMMUNITY_LEADERS[v_leader_name]
+        st.markdown("##### 🛡️ OPTIONAL COMMUNITY LEADER REFERRAL")
+        v_leader_name = st.text_input("Referring Community Leader (optional)")
+        v_leader_phone = st.text_input("Leader Contact Number (optional)")
 
         if st.form_submit_button(
-            "🚀 COMMIT APPLICATION TO TRAINING POOLS", use_container_width=True
+            "🚀 COMMIT APPLICATION TO TRAINING POOLS", width="stretch"
         ):
             final_ward = manual_kward.strip() if manual_kward.strip() else kward
-            if not (
-                sv_name and sv_phone and sv_nin and sv_vin and sv_stmt and final_ward
-            ):
+            if not (sv_name and sv_phone and sv_nin and sv_vin and sv_stmt and final_ward):
                 st.error(
                     "🛑 FORM ERROR: All core validation strings, documents, and biometric snapshot frames are mandatory."
                 )
+            elif len(sv_nin) != 11 or not sv_nin.isdigit():
+                st.error("NIN must contain exactly 11 digits.")
+            elif not _valid_phone(sv_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not sv_file or not sv_cam:
+                st.error("Upload the NIN slip and provide the requested camera capture.")
             else:
-                st.success(
-                    "Registration parameter logged into production records system!"
+                saved = _commit_submission(
+                    "skill_application",
+                    {
+                        "name": sv_name.strip(),
+                        "phone": sv_phone.strip(),
+                        "nin": sv_nin,
+                        "vin": sv_vin.strip(),
+                        "date_of_birth": sv_dob,
+                        "gender": sv_gender,
+                        "disability_status": sv_disability,
+                        "ward": final_ward,
+                        "lga": klga_clean,
+                        "skill_interest": custom_vocation or sv_selection,
+                        "prior_palliative": sv_palliative_check,
+                        "statement": sv_stmt.strip(),
+                        "leader_name": v_leader_name.strip(),
+                        "leader_contact": v_leader_phone.strip(),
+                    },
+                    uploads={"nin_slip": sv_file, "biometric_capture": sv_cam},
+                    dedupe_fields=["nin"],
                 )
-                st.balloons()
+                if saved:
+                    st.success("Your skill application was saved successfully.")
+                    st.balloons()
 
 
 def render_scholarship_form():
@@ -332,14 +334,41 @@ def render_scholarship_form():
         sch_cam = st.camera_input("Capture Student Identity Card Sensor")
         if st.form_submit_button(
             "🚀 SUBMIT SCHOLARSHIP ENTRY APPLICATION PARAMETERS",
-            use_container_width=True,
+            width="stretch",
         ):
             final_ward = manual_sward.strip() if manual_sward.strip() else sward
-            if not (sch_name and sch_nin and sch_phone and final_ward):
+            if not (sch_name and sch_nin and sch_phone and sch_inst and sch_just and final_ward):
                 st.error("Please fill all required fields.")
+            elif len(sch_nin) != 11 or not sch_nin.isdigit():
+                st.error("NIN must contain exactly 11 digits.")
+            elif not _valid_phone(sch_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not sch_file_nin or not sch_file_adm or not sch_cam:
+                st.error("Upload both required documents and provide the student ID capture.")
             else:
-                st.info("System intake pipeline initialized successfully.")
-                st.balloons()
+                saved = _commit_submission(
+                    "scholarship_application",
+                    {
+                        "name": sch_name.strip(),
+                        "nin": sch_nin,
+                        "phone": sch_phone.strip(),
+                        "academic_year": sch_year,
+                        "institution": sch_inst.strip(),
+                        "study_level": sch_level,
+                        "lga": slga_clean,
+                        "ward": final_ward,
+                        "justification": sch_just.strip(),
+                    },
+                    uploads={
+                        "nin_slip": sch_file_nin,
+                        "admission_letter": sch_file_adm,
+                        "student_id": sch_cam,
+                    },
+                    dedupe_fields=["nin"],
+                )
+                if saved:
+                    st.success("Your scholarship application was saved successfully.")
+                    st.balloons()
 
 
 def render_cv_vault():
@@ -397,14 +426,36 @@ def render_cv_vault():
         cv_cam = st.camera_input("Capture Valid Professional Certification Seals")
         if st.form_submit_button(
             "📤 COMMIT CREDENTIALS STRINGS TO TALENT PLATFORM ARCHIVE",
-            use_container_width=True,
+            width="stretch",
         ):
             final_ward = manual_vward.strip() if manual_vward.strip() else vward
-            if not (cv_name and cv_nin and cv_phone and final_ward):
+            if not (cv_name and cv_nin and cv_phone and final_ward and cv_summary):
                 st.error("Please fill all required fields.")
+            elif len(cv_nin) != 11 or not cv_nin.isdigit():
+                st.error("NIN must contain exactly 11 digits.")
+            elif not _valid_phone(cv_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not cv_file or not cv_cam:
+                st.error("Upload your CV and provide the certification capture.")
             else:
-                st.info("Transmission channel connected smoothly.")
-                st.balloons()
+                saved = _commit_submission(
+                    "cv_application",
+                    {
+                        "name": cv_name.strip(),
+                        "category": cv_cat,
+                        "qualification": cv_qual,
+                        "nin": cv_nin,
+                        "phone": cv_phone.strip(),
+                        "lga": vlga_clean,
+                        "ward": final_ward,
+                        "summary": cv_summary.strip(),
+                    },
+                    uploads={"cv": cv_file, "certification_capture": cv_cam},
+                    dedupe_fields=["nin"],
+                )
+                if saved:
+                    st.success("Your talent profile was saved successfully.")
+                    st.balloons()
 
 
 def render_cun_trigger():
@@ -444,14 +495,31 @@ def render_cun_trigger():
             "Field Visual Evidence Deficit Capture Sensor Matrix Camera"
         )
         if st.form_submit_button(
-            "🚨 TRIGGER COMMAND INCIDENT VECTOR ALERT", use_container_width=True
+            "🚨 TRIGGER COMMAND INCIDENT VECTOR ALERT", width="stretch"
         ):
             final_ward = manual_cward.strip() if manual_cward.strip() else cward
-            if not (cun_member and cun_phone and final_ward):
+            if not (cun_member and cun_phone and final_ward and cun_logs):
                 st.error("Please fill all required fields.")
+            elif not _valid_phone(cun_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not cun_file or not cun_cam:
+                st.error("Upload the requested ID document and field evidence photo.")
             else:
-                st.info("Field alert dispatch sequence routing triggered.")
-                st.balloons()
+                saved = _commit_submission(
+                    "community_urgent_need",
+                    {
+                        "reporter_name": cun_member.strip(),
+                        "phone": cun_phone.strip(),
+                        "lga": clga_clean,
+                        "ward": final_ward,
+                        "request_area": cun_area,
+                        "situation_report": cun_logs.strip(),
+                    },
+                    uploads={"identity_document": cun_file, "field_photo": cun_cam},
+                )
+                if saved:
+                    st.success("Your community urgent-need report was saved.")
+                    st.balloons()
 
 
 def render_palliative_form(focus_on_vouching=False):
@@ -467,7 +535,11 @@ def render_palliative_form(focus_on_vouching=False):
     is_direct_application = st.checkbox(
         "🙋‍♂️ I am applying directly on my own (No Local Leader Vouching required)",
         value=not focus_on_vouching,
-        key="app_pathway_toggle",
+        key=(
+            "app_pathway_toggle_vouching"
+            if focus_on_vouching
+            else "app_pathway_toggle_direct"
+        ),
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -540,23 +612,43 @@ def render_palliative_form(focus_on_vouching=False):
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button(
-            "🗳️ Submit Direct Self-Application Profile", use_container_width=True
+            "🗳️ Submit Direct Self-Application Profile", width="stretch"
         ):
             if len(p_nin) != 11 or not p_nin.isdigit():
                 st.error(
                     "🛑 Your National Identity Number (NIN) must be exactly 11 digits."
                 )
-            elif not p_name or p_lga == "Select LGA..." or not p_ward:
+            elif not p_name or not p_phone or p_lga == "Select LGA..." or not p_ward:
                 st.error(
                     "🛑 Please complete all required personal identity, geography, and ward details."
                 )
+            elif not _valid_phone(p_phone):
+                st.error("Enter a valid contact phone number.")
             elif not p_request_area:
                 st.error("🛑 Please describe your specific relief request area.")
+            elif not uploaded_nin:
+                st.error("Provide the requested NIN photo or document.")
             else:
-                st.success(
-                    "🎉 Direct application successfully registered in the relief index!"
+                saved = _commit_submission(
+                    "palliative_direct",
+                    {
+                        "name": p_name.strip(),
+                        "phone": p_phone.strip(),
+                        "nin": p_nin,
+                        "voter_id": p_voter.strip(),
+                        "lga": p_lga,
+                        "ward": p_ward.strip(),
+                        "address": p_addr.strip(),
+                        "request_area": p_request_area.strip(),
+                    },
+                    uploads={"identity_document": uploaded_nin},
+                    dedupe_fields=["nin"],
                 )
-                st.balloons()
+                if saved:
+                    st.success(
+                        "Your direct palliative application was saved successfully."
+                    )
+                    st.balloons()
 
     else:
         if focus_on_vouching:
@@ -659,7 +751,7 @@ def render_palliative_form(focus_on_vouching=False):
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button(
-            "🗳️ Register Certified Welfare Vouching Profile", use_container_width=True
+            "🗳️ Register Certified Welfare Vouching Profile", width="stretch"
         ):
             if (
                 len(leader_nin) != 11
@@ -680,13 +772,44 @@ def render_palliative_form(focus_on_vouching=False):
                 st.error(
                     "🛑 Please complete all name, role, and ward fields for both the Leader and the Applicant."
                 )
+            elif (
+                leader_lga == "Select LGA..."
+                or applicant_lga == "Select LGA..."
+                or not leader_phone
+                or not applicant_phone
+            ):
+                st.error("Select both LGAs and provide both contact phone numbers.")
+            elif not _valid_phone(leader_phone) or not _valid_phone(applicant_phone):
+                st.error("Both contact phone numbers must be valid.")
             elif not v_applicant_request_area:
                 st.error("🛑 Please describe the applicant's specific request area.")
+            elif not applicant_nin_file:
+                st.error("Provide the requested applicant NIN photo or document.")
             else:
-                st.success(
-                    "🎉 Welfare Registry Entry Created! The character-vouched profile has been successfully queued."
+                saved = _commit_submission(
+                    "palliative_vouching",
+                    {
+                        "leader_title": leader_title,
+                        "leader_name": leader_name.strip(),
+                        "leader_phone": leader_phone.strip(),
+                        "leader_lga": leader_lga,
+                        "leader_ward": leader_ward.strip(),
+                        "leader_nin": leader_nin,
+                        "leader_voter_id": leader_voter.strip(),
+                        "applicant_name": applicant_name.strip(),
+                        "applicant_phone": applicant_phone.strip(),
+                        "applicant_lga": applicant_lga,
+                        "applicant_ward": applicant_ward.strip(),
+                        "applicant_nin": applicant_nin,
+                        "applicant_voter_id": applicant_voter.strip(),
+                        "request_area": v_applicant_request_area.strip(),
+                    },
+                    uploads={"applicant_identity_document": applicant_nin_file},
+                    dedupe_fields=["applicant_nin"],
                 )
-                st.balloons()
+                if saved:
+                    st.success("The vouching application was saved successfully.")
+                    st.balloons()
 
 
 def render_sponsored_bills_panel():
@@ -787,6 +910,9 @@ def render_progress_tracker():
 
 
 def ward_collation_officer_panel():
+    if not require_role("collation"):
+        return
+
     st.markdown(
         """<div class="supervisor-header swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🛡️ Ward Collation Officer Command: Form EC8A Logs</div>""",
         unsafe_allow_html=True,
@@ -830,18 +956,26 @@ def ward_collation_officer_panel():
             if incident_occurred == "Yes":
                 incident_details = st.text_area("Incident Form Scenario")
 
-        st.camera_input("Live Capture Sensor Matrix: Form EC8A Sheet")
+        collation_evidence = st.camera_input(
+            "Live Capture Sensor Matrix: Form EC8A Sheet"
+        )
 
         if st.form_submit_button(
-            "🔍 GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP", use_container_width=True
+            "🔍 GENERATE SYSTEM INTEGRITY PREVIEW RECORD SLIP", width="stretch"
         ):
             final_ward = (
                 manual_sup_ward.strip() if manual_sup_ward.strip() else sup_ward
             )
-            if not (sup_name and sup_phone and final_ward):
+            if not (sup_name and sup_phone and final_ward and bvas_serial):
                 st.error(
-                    "🛑 FORM ERROR: Supervisor name, phone, and ward must be specified."
+                    "Supervisor name, phone, ward, and BVAS serial number are required."
                 )
+            elif not _valid_phone(sup_phone):
+                st.error("Enter a valid contact phone number.")
+            elif apc_votes + pdp_votes + lp_votes + nnpp_votes > accredited_voters:
+                st.error("The party vote total cannot exceed accredited voters.")
+            elif not collation_evidence:
+                st.error("Capture the Form EC8A evidence before generating the receipt.")
             else:
                 st.session_state.sup_slip_preview = {
                     "Supervisor": sup_name,
@@ -856,48 +990,66 @@ def ward_collation_officer_panel():
                     "Accredited_Voters": accredited_voters,
                     "Incident_Occurred": incident_occurred,
                     "Incident_Details": incident_details,
+                    "Evidence": collation_evidence,
                     "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
                 st.rerun()
 
     if st.session_state.sup_slip_preview is not None:
         p_data = st.session_state.sup_slip_preview
+        safe_data = {
+            key: html.escape(str(value))
+            for key, value in p_data.items()
+            if key != "Evidence"
+        }
         st.markdown(
             f"""
             <div class="printable-slip-box">
-                <div class="slip-header">🏛️ LSOEP WARD COLLATION INTEGRITY RECEIPT</div>
-                <div class="slip-row"><span>TIMESTAMP:</span> <span>{p_data['Timestamp']}</span></div>
-                <div class="slip-row"><span>SUPERVISOR:</span> <span>{p_data['Supervisor']}</span></div>
-                <div class="slip-row"><span>LGA:</span> <span>{p_data['LGA']}</span></div>
-                <div class="slip-row"><span>WARD:</span> <span>{p_data['Ward']}</span></div>
-                <div class="slip-row"><span>ACCREDITED:</span> <span>{p_data['Accredited_Voters']}</span></div>
-                <div class="slip-row"><span>BVAS S/N:</span> <span>{p_data['BVAS_Serial_Number']}</span></div>
-                <div class="slip-row" style="color:blue;"><span>APC:</span> <span>{p_data['APC_Votes']}</span></div>
-                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{p_data['PDP_Votes']}</span></div>
-                <div class="slip-row" style="color:red;"><span>LP:</span> <span>{p_data['LP_Votes']}</span></div>
-                <div class="slip-row" style="color:orange;"><span>NNPP:</span> <span>{p_data['NNPP_Votes']}</span></div>
+                <div class="slip-header">LSOEP WARD COLLATION INTEGRITY RECEIPT</div>
+                <div class="slip-row"><span>TIMESTAMP:</span> <span>{safe_data['Timestamp']}</span></div>
+                <div class="slip-row"><span>SUPERVISOR:</span> <span>{safe_data['Supervisor']}</span></div>
+                <div class="slip-row"><span>LGA:</span> <span>{safe_data['LGA']}</span></div>
+                <div class="slip-row"><span>WARD:</span> <span>{safe_data['Ward']}</span></div>
+                <div class="slip-row"><span>ACCREDITED:</span> <span>{safe_data['Accredited_Voters']}</span></div>
+                <div class="slip-row"><span>BVAS S/N:</span> <span>{safe_data['BVAS_Serial_Number']}</span></div>
+                <div class="slip-row" style="color:blue;"><span>APC:</span> <span>{safe_data['APC_Votes']}</span></div>
+                <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{safe_data['PDP_Votes']}</span></div>
+                <div class="slip-row" style="color:red;"><span>LP:</span> <span>{safe_data['LP_Votes']}</span></div>
+                <div class="slip-row" style="color:orange;"><span>NNPP:</span> <span>{safe_data['NNPP_Votes']}</span></div>
             </div>""",
             unsafe_allow_html=True,
         )
         col_v1, col_v2 = st.columns(2)
         with col_v1:
-            if st.button("🔒 CONFIRM & LOG METRICS", use_container_width=True):
-                # Logic to save data would go here
-                st.session_state.sup_slip_preview = None
-                st.success("Submission logged successfully!")
-                st.balloons()
-                time.sleep(1)
-                st.rerun()
+            if st.button("🔒 CONFIRM & LOG METRICS", width="stretch"):
+                payload = {
+                    key: value
+                    for key, value in p_data.items()
+                    if key not in {"Evidence", "Timestamp"}
+                }
+                payload["timestamp"] = p_data["Timestamp"]
+                saved = _commit_submission(
+                    "ward_collation",
+                    payload,
+                    uploads={"ec8a_sheet": p_data["Evidence"]},
+                    dedupe_fields=["BVAS_Serial_Number"],
+                )
+                if saved:
+                    st.session_state.sup_slip_preview = None
+                    st.success("The collation report was saved successfully.")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
         with col_v2:
-            if st.button("❌ ABORT TRANSACTION", use_container_width=True):
+            if st.button("❌ ABORT TRANSACTION", width="stretch"):
                 st.session_state.sup_slip_preview = None
                 st.warning("Preview cleared.")
                 st.rerun()
 
 
 def agent_panel():
-    if "agent_authenticated" not in st.session_state:
-        st.session_state.agent_authenticated = False
+    if not require_role("agent"):
+        return
 
     st.markdown("### 🗳️ POLLING UNIT AGENT COMMAND CONTROL NODE")
     st.write("---")
@@ -907,12 +1059,10 @@ def agent_panel():
         if st.button(
             "🔒 Seal Node & Close Terminal Session",
             key="seal_agent_node_btn_v9",
-            use_container_width=True,
+            width="stretch",
         ):
-            st.session_state.agent_authenticated = False
-            st.success("Terminal session disconnected securely.")
-            time.sleep(0.4)
-            st.rerun()
+            st.session_state.current_route = "HOME"
+            st.logout()
 
     st.markdown('<div class="command-hub-pane">', unsafe_allow_html=True)
     st.markdown("##### 📡 Live Telemetry Field Tally Submission Matrix")
@@ -1011,14 +1161,14 @@ def agent_panel():
 
         st.markdown("---")
         st.markdown("###### 📸 Section 4: Physical Evidence Document Capture")
-        st.camera_input(
+        pu_evidence = st.camera_input(
             "Optical Sensor Frame: Capture Signed Polling Unit Result Slip Picture *",
             key="pu_cam_slip",
         )
 
         if st.form_submit_button(
             "📤 TRANSMIT SECURE FIELD PAYLOAD TO BALANCING HARMONY CORE",
-            use_container_width=True,
+            width="stretch",
         ):
             final_ward = manual_pu_ward.strip() if manual_pu_ward.strip() else pu_ward
             calculated_sum = v_apc + v_pdp + v_lp + v_nnpp
@@ -1029,20 +1179,51 @@ def agent_panel():
                 st.error(
                     "🛑 DATA TRANSMISSION REFUSED: All credential fields, hardware serial tracking, and situational notes must be filled."
                 )
+            elif not _valid_phone(pu_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not pu_evidence:
+                st.error("Capture the signed polling-unit result slip before submitting.")
             elif calculated_sum > pu_accredited:
                 st.error(
                     f"🚨 MATHEMATICAL IMPOSSIBILITY: Aggregate party votes ({calculated_sum:,}) cannot exceed total accredited voters ({pu_accredited:,})."
                 )
             else:
-                st.success(
-                    f"✅ SECURE TELEMETRY LINK LOCKED FOR WARD: {final_ward.upper()}!"
+                saved = _commit_submission(
+                    "polling_unit_tally",
+                    {
+                        "officer_name": pu_officer.strip(),
+                        "phone": pu_phone.strip(),
+                        "bvas_serial": pu_bvas_id.strip(),
+                        "lga": pu_lga,
+                        "ward": final_ward,
+                        "election_tier": pu_tier,
+                        "accredited_voters": pu_accredited,
+                        "incident": pu_incident_flag,
+                        "party_votes": {
+                            "APC": v_apc,
+                            "PDP": v_pdp,
+                            "LP": v_lp,
+                            "NNPP": v_nnpp,
+                        },
+                        "total_votes": calculated_sum,
+                        "description": pu_description.strip(),
+                    },
+                    uploads={"result_slip": pu_evidence},
+                    dedupe_fields=["bvas_serial"],
                 )
-                st.balloons()
+                if saved:
+                    st.success(
+                        f"Field tally for {final_ward.upper()} was saved successfully."
+                    )
+                    st.balloons()
 
     st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main_dashboard(conn):
+    if not require_role("admin"):
+        return
+
     st.markdown(
         """<h2 class="swing-in" style="font-size: 1.8rem; text-transform: uppercase;">🏛️ Executive Control Command Dashboard</h2>""",
         unsafe_allow_html=True,
@@ -1071,15 +1252,43 @@ def main_dashboard(conn):
 
     if selected_module == "📊 Master Registry Matrix":
         st.subheader("📊 Master Verification Registry Database Partition Array")
-        st.dataframe(st.session_state.get("global_registry", pd.DataFrame()))
+        try:
+            records = list_submissions(
+                [
+                    "palliative_direct",
+                    "palliative_vouching",
+                    "skill_application",
+                    "scholarship_application",
+                    "cv_application",
+                ]
+            )
+        except PersistenceError as exc:
+            st.error(str(exc))
+        else:
+            if records is None:
+                return
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Submission Type": record["submission_type"],
+                            "Created At": record["created_at"],
+                            **record["payload"],
+                        }
+                        for record in records
+                    ]
+                ),
+                hide_index=True,
+                width="stretch",
+            )
     elif selected_module == "🗣️ Citizen Feedback":
         st.subheader("🗣️ Citizen Feedback Messages")
-        st.info("This module is under construction.")
+        _render_saved_submissions(["speak_direct", "community_urgent_need"])
     elif selected_module == "📢 Admin Announcement Control":
         render_admin_announcement_control()
     elif selected_module == "📝 Ground Truth Form EC8A Data":
         st.subheader("📝 Ground Truth Form EC8A Audited Verification Schema")
-        st.info("This module is under construction.")
+        _render_saved_submissions(["ward_collation", "polling_unit_tally"])
     elif selected_module == "🗳️ Live Election Analytical Sync":
         render_election_analytical_sync()
     elif selected_module == "🚀 Legislative Progress Tracker":
@@ -1102,143 +1311,191 @@ def render_project_verifications():
     st.info("Project verification documents will be uploaded here.")
 
 
+def _render_saved_submissions(submission_types):
+    try:
+        records = list_submissions(submission_types)
+    except PersistenceError as exc:
+        st.error(str(exc))
+        return
+
+    if records is None:
+        return
+    if not records:
+        st.info("No saved submissions are available for this view.")
+        return
+
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Submission Type": record["submission_type"],
+                    "Created At": record["created_at"],
+                    **record["payload"],
+                }
+                for record in records
+            ]
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+
+
+def render_admin_submissions(submission_types=None):
+    if require_role("admin"):
+        _render_saved_submissions(submission_types)
+
+
 def strategic_committees_panel():
     st.markdown(
         """<div class="supervisor-header swing-in" style="font-size: 1.7rem; text-transform: uppercase;">🛡️ MODULE 13: STRATEGIC COMMITTEES (1-10) ACCESS GATEWAY</div>""",
         unsafe_allow_html=True,
     )
 
-    if "module_13_unlocked" not in st.session_state:
-        st.session_state.module_13_unlocked = False
-
-    if not st.session_state.module_13_unlocked:
-        with st.form("general_login_form"):
-            committee_key_input = st.text_input(
-                "Enter General Passkey to Unlock Module:", type="password"
-            )
-            if st.form_submit_button("Unlock Module", use_container_width=True):
-                # This password should be changed for production
-                if committee_key_input == "congratulationshonali":
-                    st.session_state.module_13_unlocked = True
-                    st.rerun()
-                else:
-                    st.error("🛑 ACCESS REJECTED: General passkey signature mismatch.")
-        return
-
-    st.success(
-        "✅ General Access Granted. Please select your committee and enter its specific passkey."
-    )
-
-    if "authenticated_committee" not in st.session_state:
-        st.session_state.authenticated_committee = None
-
     selected_committee = st.selectbox(
         "Select Your Assigned Committee:", options=[""] + STRATEGIC_COMMITTEE_NAMES
     )
 
-    if selected_committee:
-        if st.session_state.authenticated_committee != selected_committee:
-            with st.form(key=f"login_form_{selected_committee.replace(' ', '_')}"):
-                password = st.text_input("Enter Committee Passkey:", type="password")
-                if st.form_submit_button(
-                    "🔓 Unlock Committee", use_container_width=True
-                ):
-                    correct_password = STRATEGIC_COMMITTEE_PASSWORDS.get(
-                        selected_committee
-                    )
-                    if password == correct_password:
-                        st.session_state.authenticated_committee = selected_committee
-                        st.rerun()
-                    else:
-                        st.error(
-                            "🛑 ACCESS REJECTED: Passkey for this committee is incorrect."
-                        )
-        else:
-            st.markdown(f"### 📋 Member Registration for: {selected_committee}")
-            with st.form(
-                key=f"strategic_reg_form_{selected_committee}", clear_on_submit=False
+    if not selected_committee:
+        return
+    if not is_logged_in():
+        render_login_prompt("committee membership")
+        return
+    if not has_committee_access(selected_committee):
+        st.error("Your account is not authorized for the selected committee.")
+        return
+
+    st.markdown(f"### 📋 Member Registration for: {selected_committee}")
+    with st.form(
+        key=f"strategic_reg_form_{selected_committee}", clear_on_submit=False
+    ):
+        st.caption("Enter the verified details of the committee member:")
+
+        st.markdown("##### 📸 Biometric Facial Capture")
+        captured_image = st.camera_input("Biometric Face Capture")
+
+        st.markdown("##### 👤 Member Personal Details")
+        col_name, col_phone = st.columns(2)
+        with col_name:
+            member_name = st.text_input("Full Name")
+        with col_phone:
+            member_phone = st.text_input("Phone Number")
+
+        st.markdown("##### 📍 Geographic & Ward Locus")
+        constituency_data = {
+            "Balanga": LGA_WARD_DATA.get("BALANGA", []),
+            "Billiri": LGA_WARD_DATA.get("BILLIRI", []),
+        }
+        col_lga, col_ward_sel, col_ward_txt = st.columns([1, 1, 1])
+        with col_lga:
+            selected_lga = st.selectbox(
+                "Select LGA", options=list(constituency_data.keys())
+            )
+        with col_ward_sel:
+            selected_ward = st.selectbox(
+                "Select Political Ward",
+                options=constituency_data.get(selected_lga, []) + ["Other"],
+            )
+        with col_ward_txt:
+            manual_ward = st.text_input("Or Type Specific Ward")
+
+        st.markdown("##### 🪪 Government Issued Credentials")
+        col_nin, col_pvc, col_slip = st.columns([1, 1, 1])
+        with col_nin:
+            nin_number = st.text_input("NIN (11 Digits)", max_chars=11)
+        with col_pvc:
+            pvc_number = st.text_input("Voters Card Number (VIN)")
+        with col_slip:
+            nin_slip = st.file_uploader(
+                "Upload NIN Slip / ID Doc", type=["png", "jpg", "pdf"]
+            )
+
+        st.markdown("##### 🏦 Verified Financial Coordinates")
+        col_acc_name, col_acc_num, col_bank = st.columns([1.2, 0.8, 1])
+        with col_acc_name:
+            account_name = st.text_input("Account Name")
+        with col_acc_num:
+            account_number = st.text_input("Account Number", max_chars=10)
+        with col_bank:
+            bank_name = st.text_input("Bank Name")
+
+        if st.form_submit_button(
+            f"➕ Register Member for {selected_committee}",
+            width="stretch",
+        ):
+            final_ward = (
+                manual_ward.strip() if manual_ward.strip() else selected_ward
+            )
+            if not all(
+                [
+                    member_name,
+                    member_phone,
+                    selected_ward,
+                    final_ward,
+                    nin_number,
+                    pvc_number,
+                    account_name,
+                    account_number,
+                    bank_name,
+                ]
             ):
-                st.caption("Enter the verified details of the committee member:")
-
-                st.markdown("##### 📸 Biometric Facial Capture")
-                captured_image = st.camera_input("Biometric Face Capture")
-
-                st.markdown("##### 👤 Member Personal Details")
-                col_name, col_phone = st.columns(2)
-                with col_name:
-                    member_name = st.text_input("Full Name")
-                with col_phone:
-                    member_phone = st.text_input("Phone Number")
-
-                st.markdown("##### 📍 Geographic & Ward Locus")
-                constituency_data = {
-                    "Balanga": LGA_WARD_DATA.get("BALANGA", []),
-                    "Billiri": LGA_WARD_DATA.get("BILLIRI", []),
-                }
-                col_lga, col_ward_sel, col_ward_txt = st.columns([1, 1, 1])
-                with col_lga:
-                    selected_lga = st.selectbox(
-                        "Select LGA", options=list(constituency_data.keys())
+                st.error("Complete all member, identity, location, and bank fields.")
+            elif len(nin_number) != 11 or not nin_number.isdigit():
+                st.error("NIN must contain exactly 11 digits.")
+            elif len(account_number) != 10 or not account_number.isdigit():
+                st.error("Account number must contain exactly 10 digits.")
+            elif not _valid_phone(member_phone):
+                st.error("Enter a valid contact phone number.")
+            elif not nin_slip or not captured_image:
+                st.error(
+                    "Upload the NIN slip and provide the requested biometric capture."
+                )
+            else:
+                saved = _commit_submission(
+                    "committee_member",
+                    {
+                        "committee": selected_committee,
+                        "name": member_name.strip(),
+                        "phone": member_phone.strip(),
+                        "lga": selected_lga,
+                        "ward": final_ward,
+                        "nin": nin_number,
+                        "voter_id": pvc_number.strip(),
+                        "account_name": account_name.strip(),
+                        "account_number": account_number,
+                        "bank": bank_name.strip(),
+                    },
+                    uploads={
+                        "nin_slip": nin_slip,
+                        "biometric_capture": captured_image,
+                    },
+                    dedupe_fields=["nin"],
+                )
+                if saved:
+                    st.success(
+                        f"{member_name} was registered for {selected_committee}."
                     )
-                with col_ward_sel:
-                    selected_ward = st.selectbox(
-                        "Select Political Ward",
-                        options=constituency_data.get(selected_lga, []) + ["Other"],
-                    )
-                with col_ward_txt:
-                    manual_ward = st.text_input("Or Type Specific Ward")
+                    st.balloons()
 
-                st.markdown("##### 🪪 Government Issued Credentials")
-                col_nin, col_pvc, col_slip = st.columns([1, 1, 1])
-                with col_nin:
-                    nin_number = st.text_input("NIN (11 Digits)", max_chars=11)
-                with col_pvc:
-                    pvc_number = st.text_input("Voters Card Number (VIN)")
-                with col_slip:
-                    nin_slip = st.file_uploader(
-                        "Upload NIN Slip / ID Doc", type=["png", "jpg", "pdf"]
-                    )
-
-                st.markdown("##### 🏦 Verified Financial Coordinates")
-                col_acc_name, col_acc_num, col_bank = st.columns([1.2, 0.8, 1])
-                with col_acc_name:
-                    account_name = st.text_input("Account Name")
-                with col_acc_num:
-                    account_number = st.text_input("Account Number", max_chars=10)
-                with col_bank:
-                    bank_name = st.text_input("Bank Name")
-
-                if st.form_submit_button(
-                    f"➕ Register Member for {selected_committee}",
-                    use_container_width=True,
-                ):
-                    final_ward = (
-                        manual_ward.strip() if manual_ward.strip() else selected_ward
-                    )
-                    if (
-                        not member_name
-                        or (
-                            nin_number
-                            and (not nin_number.isdigit() or len(nin_number) != 11)
-                        )
-                        or (
-                            account_number
-                            and (
-                                not account_number.isdigit()
-                                or len(account_number) != 10
-                            )
-                        )
-                    ):
-                        st.error(
-                            "⚠️ Please check inputs. Name is required, and NIN/Account numbers must be valid lengths."
-                        )
-                    else:
-                        st.success(
-                            f"✅ {member_name} has been successfully registered into {selected_committee}!"
-                        )
-                        st.balloons()
-
-            st.markdown(f"#### Registered Members for: {selected_committee}")
+    st.markdown(f"#### Registered Members for: {selected_committee}")
+    try:
+        records = list_submissions(["committee_member"])
+    except PersistenceError as exc:
+        st.error(str(exc))
+    else:
+        if records is None:
+            return
+        members = [
+            {
+                "Name": record["payload"].get("name"),
+                "Phone": record["payload"].get("phone"),
+                "LGA": record["payload"].get("lga"),
+                "Ward": record["payload"].get("ward"),
+                "Created At": record["created_at"],
+            }
+            for record in records
+            if record["payload"].get("committee") == selected_committee
+        ]
+        st.dataframe(pd.DataFrame(members), hide_index=True, width="stretch")
 
 
 def render_speak_directly_panel():
@@ -1288,19 +1545,36 @@ def render_speak_directly_panel():
         )
 
         if st.form_submit_button(
-            "🚀 Transmit Message to Leader", use_container_width=True
+            "🚀 Transmit Message to Leader", width="stretch"
         ):
             final_ward = manual_ward.strip() if manual_ward.strip() else selected_ward
             if not (full_name and message_body and final_ward):
                 st.error(
                     "⚠️ Please fill in your Name, Ward, and Message before transmitting."
                 )
+            elif not _valid_phone(phone_num):
+                st.error("Enter a valid contact phone number.")
             else:
-                st.success("📨 Message Successfully Logged for Verification!")
-                st.balloons()
+                saved = _commit_submission(
+                    "speak_direct",
+                    {
+                        "name": full_name.strip(),
+                        "phone": phone_num.strip(),
+                        "lga": selected_lga,
+                        "ward": final_ward,
+                        "subject": subject.strip(),
+                        "message": message_body.strip(),
+                    },
+                )
+                if saved:
+                    st.success("Your message was saved for review.")
+                    st.balloons()
 
 
 def render_committee_compliance_form():
+    if not require_role("admin"):
+        return
+
     st.markdown("### 📋 STRATEGIC COMMITTEE COMPLIANCE LOGS")
     st.caption(
         "Categorized regulatory compliance submissions and data logs for direct administrative sorting."
@@ -1325,33 +1599,59 @@ def render_committee_compliance_form():
             "Vouched Project Resources Expended (NGN):", min_value=0.0, step=1000.0
         )
         if st.form_submit_button(
-            "🔒 Transmit Report to Executive Control Room", use_container_width=True
+            "🔒 Transmit Report to Executive Control Room", width="stretch"
         ):
-            st.success(
-                f"✅ Report for {officer_name} logged under {committee_group.split(':')[0]}!"
-            )
+            if not (officer_name.strip() and regional_scope.strip() and activity_summary.strip()):
+                st.error("Provide the reporting official, location, and activity summary.")
+            else:
+                saved = _commit_submission(
+                    "committee_compliance",
+                    {
+                        "committee_group": committee_group,
+                        "officer_name": officer_name.strip(),
+                        "regional_scope": regional_scope.strip(),
+                        "activity_summary": activity_summary.strip(),
+                        "expenditure_vouched": expenditure_vouched,
+                    },
+                )
+                if saved:
+                    st.success(
+                        f"Report for {officer_name} was saved under {committee_group.split(':')[0]}."
+                    )
 
 
 def render_election_analytical_sync():
+    if not require_role("admin"):
+        return
+
     st.markdown("### 📊 LIVE ELECTION ANALYTICAL SYNC DISPLAY")
-    st.caption(
-        "National real-time command dashboard. Drill down across states, LGAs, and operational units."
-    )
-    st.markdown("### CASCADING GEO-SEARCH TERMINAL")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        state_list = sorted(list(GEO_MATRIX.keys()))
-        selected_state = st.selectbox(
-            "🎯 Select Target State:",
-            options=state_list,
-            index=state_list.index("Gombe") if "Gombe" in state_list else 0,
+    try:
+        records = list_submissions(["polling_unit_tally"])
+    except PersistenceError as exc:
+        st.error(str(exc))
+        return
+
+    if records is None:
+        return
+    if not records:
+        st.info("No polling-unit tallies have been recorded.")
+        return
+
+    rows = []
+    for record in records:
+        payload = record["payload"]
+        rows.append(
+            {
+                "Created At": record["created_at"],
+                "LGA": payload.get("lga"),
+                "Ward": payload.get("ward"),
+                "Election Tier": payload.get("election_tier"),
+                "Accredited Voters": payload.get("accredited_voters"),
+                "Total Votes": payload.get("total_votes"),
+                **payload.get("party_votes", {}),
+            }
         )
-    with c2:
-        lga_list = sorted(list(GEO_MATRIX.get(selected_state, {}).keys()))
-        selected_lga = st.selectbox("🏢 Select LGA:", options=lga_list)
-    with c3:
-        ward_list = sorted(GEO_MATRIX.get(selected_state, {}).get(selected_lga, []))
-        selected_ward = st.selectbox("📍 Select Ward:", options=ward_list)
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
 
 def render_vouching_form():
@@ -1375,65 +1675,9 @@ def render_constituent_plenary_updates():
 def render_job_verification_panel():
     st.header("🔍 Federal Job Verification & Tracking Hub")
     st.caption(
-        "Verify authentic military, paramilitary, and federal agency recruitments with official timelines."
+        "Current openings are not verified by this portal. Confirm recruitment status directly with the relevant agency."
     )
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.metric("Active Federal Windows", "3 Open Openings")
-    with m2:
-        st.metric("Scam Alerts Logged", "14 Verified Scams")
-    with m3:
-        st.metric("Last Matrix Update", "Today, 11:30 WAT")
-    st.divider()
-    col_search, col_type = st.columns([2, 1])
-    with col_search:
-        search_query = st.text_input(
-            "Search by Agency Name (e.g., 'Customs', 'Air Force')..."
-        )
-    with col_type:
-        agency_type = st.selectbox(
-            "Filter Tier",
-            ["All Tiers", "Military", "Paramilitary", "Civil Service / MDA"],
-        )
-    st.markdown("### 📋 Official Recruitment Status Matrix")
-    job_data = [
-        {
-            "Agency": "Nigerian Army (Direct Short Service)",
-            "Type": "Military",
-            "Status": "🟢 ACTIVE",
-            "Official Portal": "https://recruitment.army.mil.ng",
-        },
-        {
-            "Agency": "Nigeria Customs Service (NCS)",
-            "Type": "Paramilitary",
-            "Status": "🔴 CLOSED",
-            "Official Portal": "https://customs.gov.ng",
-        },
-        {
-            "Agency": "Federal Civil Service Commission",
-            "Type": "Civil Service / MDA",
-            "Status": "🔴 CLOSED",
-            "Official Portal": "https://fcsc.gov.ng",
-        },
-    ]
-    filtered_jobs = [
-        j
-        for j in job_data
-        if (search_query.lower() in j["Agency"].lower())
-        and (agency_type == "All Tiers" or j["Type"] == agency_type)
-    ]
-    if filtered_jobs:
-        st.dataframe(
-            filtered_jobs,
-            use_container_width=True,
-            column_config={
-                "Official Portal": st.column_config.LinkColumn(
-                    "Official Application Link", display_text="Launch Official Site 🌐"
-                )
-            },
-        )
-    else:
-        st.info("No matching verified federal windows found for your search query.")
+    st.info("No current, verified recruitment listings are available.")
     st.error(
         "🚨 **Constituent Scam Protection Alert:** If you have received a recruitment text or letter demanding payment for pins or placement in any paramilitary body, it is a fraud. Report details directly to the admin command center."
     )
@@ -1442,126 +1686,16 @@ def render_job_verification_panel():
 def render_grants_verification_panel():
     st.header("📂 Federal Palliative & Industrial Grants Matrix")
     st.caption(
-        "Track and verify authentic federal intervention schemes and industrial development funds."
+        "Current grant availability is not verified by this portal. Confirm eligibility and application status directly with the responsible agency."
     )
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.metric("Verified Open Funds", "4 Active Schemes")
-    with m2:
-        st.metric("Total Federal Capital Allocation", "₦150B (Nationwide)")
-    with m3:
-        st.metric("Portal Data Sync Status", "Live / Verified")
-    st.divider()
-    col_search, col_type = st.columns([2, 1])
-    with col_search:
-        search_query = st.text_input(
-            "Search by Fund or Agency Name (e.g., 'SMEDAN', 'BOI')..."
-        )
-    with col_type:
-        grant_tier = st.selectbox(
-            "Fund Category",
-            [
-                "All Categories",
-                "Social Palliative / Relief",
-                "MSME & Industrial Growth",
-                "Agricultural Intervention",
-            ],
-        )
-    st.markdown("### 📋 Official Intervention & Grant Registry")
-    grant_database = [
-        {
-            "Scheme Name": "BOI MSME Intervention Fund",
-            "Category": "MSME & Industrial Growth",
-            "Status": "🟢 OPEN",
-            "Official Portal": "https://www.boi.ng/investment-funds",
-        },
-        {
-            "Scheme Name": "Federal Presidential Palliative Grant",
-            "Category": "Social Palliative / Relief",
-            "Status": "🔴 CLOSED",
-            "Official Portal": "https://grant.fedgrantandloan.gov.ng",
-        },
-        {
-            "Scheme Name": "SMEDAN Agro-Business Development Component",
-            "Category": "Agricultural Intervention",
-            "Status": "🟢 OPEN",
-            "Official Portal": "https://smedan.gov.ng",
-        },
-        {
-            "Scheme Name": "NERFUND Manufacturing Expansion Credit Line",
-            "Category": "MSME & Industrial Growth",
-            "Status": "🟢 OPEN",
-            "Official Portal": "http://www.nerfund.gov.ng",
-        },
-    ]
-    filtered_grants = [
-        g
-        for g in grant_database
-        if (search_query.lower() in g["Scheme Name"].lower())
-        and (grant_tier == "All Categories" or g["Category"] == grant_tier)
-    ]
-    if filtered_grants:
-        st.dataframe(
-            filtered_grants,
-            use_container_width=True,
-            column_config={
-                "Official Portal": st.column_config.LinkColumn(
-                    "Official Application Link",
-                    display_text="Apply via Official Portal 🌐",
-                )
-            },
-        )
-    else:
-        st.info(
-            "No matching verified federal intervention programs found for your criteria."
-        )
+    st.info("No current, verified grant listings are available.")
     st.warning(
         "⚠️ **Security Vetting Advisory:** Authentic federal government intervention programs will **never** demand processing fees or your bank account transaction PIN codes."
     )
 
 
-@st.cache_data(ttl=3600)
-def fetch_live_federal_vacancies():
-    return [
-        {
-            "Agency": "Nigeria Air Force (Recruitment)",
-            "Date": "2024-07-15",
-            "Status": "🟢 OPEN",
-        },
-        {
-            "Agency": "Civil Defense, Fire, Immigration (CDCFIB)",
-            "Date": "2024-07-17",
-            "Status": "🟢 OPEN",
-        },
-        {
-            "Agency": "NDLEA Officer Cadet Corps",
-            "Date": "2024-05-10",
-            "Status": "🔴 CLOSED",
-        },
-    ]
-
-
-@st.fragment(run_every="5m")
 def render_top_vacancy_alerts():
-    try:
-        live_feed = fetch_live_federal_vacancies()
-        recent_windows = [v for v in live_feed if v["Status"] == "🟢 OPEN"]
-        if recent_windows:
-            alert_text = " | ".join(
-                [f"🔥 {item['Agency']} is currently active!" for item in recent_windows]
-            )
-            st.markdown(
-                f"""
-                <div style="background-color: #7A1C1C; border-left: 6px solid #D4AF37; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.15);">
-                    <span style="color: #FFFFFF; font-weight: 800; font-family: 'Inter', sans-serif; letter-spacing: 0.5px; font-size: 0.95rem;">
-                        ⚠️ VERIFIED FEDERAL VACANCY ALERT: {alert_text}
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-    except Exception:
-        pass
+    st.caption("Live federal vacancy alerts are not currently available.")
 
 
 def render_vouching_verification_panel():
