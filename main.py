@@ -6,8 +6,9 @@
 
 import sys
 import os
-import base64
+import io
 import asyncio
+import threading
 import warnings
 import streamlit as st
 import pandas as pd
@@ -27,6 +28,12 @@ from styling import inject_custom_css
 from ui_modules import render_hero_banner, render_marquee_header
 from registry import initialize_system_states, HON_TITLE, HON_ALI_SPONSORED_BILLS
 import panels
+
+
+@st.cache_resource
+def _pdfium_lock():
+    return threading.Lock()
+
 
 # --- 2. PREMIUM VISUAL CANVAS PLATFORM SETUP ---
 st.set_page_config(
@@ -442,15 +449,50 @@ else:
         BUNDLE_PATH = os.path.join(MEDIA_FOLDER, target_filename)
 
         if os.path.exists(BUNDLE_PATH):
-            with open(BUNDLE_PATH, "rb") as f:
-                pdf_bytes = f.read()
+            try:
+                import pypdfium2 as pdfium
+            except ImportError as exc:
+                st.error(f"The PDF viewer is unavailable: {exc}")
+                st.stop()
+
+            @st.cache_data(show_spinner=False)
+            def get_pdf_page_count(pdf_bytes: bytes) -> int:
+                with _pdfium_lock():
+                    with pdfium.PdfDocument(pdf_bytes) as pdf:
+                        return len(pdf)
+
+            @st.cache_data(show_spinner=False, max_entries=20)
+            def render_pdf_page(pdf_bytes: bytes, page_index: int) -> bytes:
+                with _pdfium_lock():
+                    with pdfium.PdfDocument(pdf_bytes) as pdf:
+                        page = pdf[page_index]
+                        try:
+                            bitmap = page.render(scale=2.0)
+                            try:
+                                image = bitmap.to_pil()
+                                if image.mode != "RGB":
+                                    image = image.convert("RGB")
+                                with io.BytesIO() as image_bytes:
+                                    image.save(image_bytes, format="PNG")
+                                    return image_bytes.getvalue()
+                            finally:
+                                bitmap.close()
+                        finally:
+                            page.close()
+
+            try:
+                with open(BUNDLE_PATH, "rb") as f:
+                    pdf_bytes = f.read()
+            except OSError as exc:
+                st.error(f"The document could not be read: {exc}")
+                st.stop()
 
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.success(f"Connected to: **MEDIA MEDIA MEDIA/{target_filename}**")
             with col2:
                 st.download_button(
-                    label="📥 Download This Page",
+                    label="📥 Download Official Copy",
                     data=pdf_bytes,
                     file_name=target_filename,
                     mime="application/pdf",
@@ -459,18 +501,50 @@ else:
 
             st.divider()
 
-            base64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-            pdf_display = f"""
-                <iframe
-                    src="data:application/pdf;base64,{base64_pdf}"
-                    width="100%"
-                    height="850px"
-                    type="application/pdf"
-                    style="border: 2px solid #D4AF37; border-radius: 8px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"
-                >
-                </iframe>
-            """
-            st.markdown(pdf_display, unsafe_allow_html=True)
+            try:
+                total_pages = get_pdf_page_count(pdf_bytes)
+
+                if total_pages > 0:
+                    page_state_key = f"page_idx_{target_filename}"
+                    if page_state_key not in st.session_state:
+                        st.session_state[page_state_key] = 0
+
+                    curr_idx = max(
+                        0, min(st.session_state[page_state_key], total_pages - 1)
+                    )
+                    st.session_state[page_state_key] = curr_idx
+
+                    nav_c1, nav_c2, nav_c3 = st.columns([1, 2, 1])
+                    with nav_c1:
+                        if st.button(
+                            "◀ Previous Page",
+                            disabled=(curr_idx == 0),
+                            width="stretch",
+                            key=f"prev_{target_filename}",
+                        ):
+                            st.session_state[page_state_key] = curr_idx - 1
+                            st.rerun()
+                    with nav_c2:
+                        st.markdown(
+                            f"<div style='text-align:center; padding-top:6px; font-weight:600; color:#D4AF37;'>"
+                            f"Page {curr_idx + 1} of {total_pages}</div>",
+                            unsafe_allow_html=True,
+                        )
+                    with nav_c3:
+                        if st.button(
+                            "Next Page ▶",
+                            disabled=(curr_idx == total_pages - 1),
+                            width="stretch",
+                            key=f"next_{target_filename}",
+                        ):
+                            st.session_state[page_state_key] = curr_idx + 1
+                            st.rerun()
+
+                    st.image(render_pdf_page(pdf_bytes, curr_idx), width="stretch")
+                else:
+                    st.warning("This document contains no readable pages.")
+            except (pdfium.PdfiumError, OSError, ValueError) as exc:
+                st.error(f"Error rendering document pages: {exc}")
         else:
             st.error(
                 f"❌ PATH LOOKUP ERROR: Could not locate target file at path: {BUNDLE_PATH}"
