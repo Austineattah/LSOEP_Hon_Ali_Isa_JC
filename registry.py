@@ -96,6 +96,114 @@ STRATEGIC_COMMITTEE_NAMES = [
     "Committee 10: Constituency Outreach & Engagement",
 ]
 
+# ==============================================================================
+# VERIFIED FEDERAL GOVERNMENT INDUSTRIAL GRANTS & SCHEMES
+# ==============================================================================
+FEDERAL_INDUSTRIAL_GRANTS = [
+    {
+        "title": "SMEDAN Conditional Grant Scheme (CGS)",
+        "agency": "Small & Medium Enterprises Development Agency of Nigeria (SMEDAN)",
+        "funding_type": "Non-Repayable Grant",
+        "funding_amount": "₦50,000",
+        "eligibility": "Nano/Micro businesses (1-4 employees) with employment commitment; Nigerian citizens aged 18+",
+        "description": "Non-repayable grant for nano and micro business operators with commitment to employment creation. Supports business registration, equipment, and working capital.",
+        "key_requirements": [
+            "Business registration (CAC/BN verification)",
+            "Employment commitment (minimum 1 new job)",
+            "Valid NIN and business identification",
+            "Completion of SMEDAN business skills training",
+        ],
+        "application_url": "https://smedan.gov.ng/our-programs/cgs/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+    {
+        "title": "Bank of Industry (BOI) Intervention Programmes",
+        "agency": "Bank of Industry (BOI)",
+        "funding_type": "Financing & Intervention Funds",
+        "funding_amount": "Varies (up to ₦500M)",
+        "eligibility": "MSME operators, industries, manufacturing; registered businesses with 6+ months operation",
+        "description": "Multiple intervention programs including iProgrammes (tech startups), RAPID (rapid finance for businesses), and Women Fund for female entrepreneurs. Flexible terms and competitive rates.",
+        "key_requirements": [
+            "MSME or industrial business registration",
+            "6+ months business operation history",
+            "Valid business plan and financial statements",
+            "Collateral as per program requirements",
+        ],
+        "application_url": "https://iprogrammes.boi.ng/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+    {
+        "title": "Presidential Conditional Grant Scheme (PCGS) & MSME Clinics",
+        "agency": "Federal Ministry of Industry, Trade and Investment (FMITI)",
+        "funding_type": "Non-Repayable Conditional Grant",
+        "funding_amount": "Varies by category (₦100,000 - ₦5M)",
+        "eligibility": "Nigerian MSMEs, cooperatives, artisans; meet FMITI classification criteria",
+        "description": "Federal MSME grant portal offering multiple schemes for business expansion, equipment purchase, and capacity building. Includes MSME clinics for business advisory support.",
+        "key_requirements": [
+            "FMITI MSME registration",
+            "Viable business plan",
+            "Financial transparency (6-12 months records)",
+            "Compliance with environmental/safety standards",
+        ],
+        "application_url": "https://fedgrantandloan.gov.ng/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+    {
+        "title": "NEPC Export Expansion Grant (EEG)",
+        "agency": "Nigerian Export Promotion Council (NEPC)",
+        "funding_type": "Non-Oil Export Grant",
+        "funding_amount": "Up to ₦10M",
+        "eligibility": "Non-oil export businesses, manufacturers, agro-exporters; registered NEPC members",
+        "description": "Government support for non-oil export businesses seeking to expand export capacity, access international markets, and build export competitiveness.",
+        "key_requirements": [
+            "Export capability demonstration",
+            "NEPC membership",
+            "Product/service quality certification",
+            "Market access or export contract",
+        ],
+        "application_url": "https://nepc.gov.ng/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+    {
+        "title": "Federal Ministry of Education Student Venture Capital Grant (S-VCG)",
+        "agency": "Federal Ministry of Education & Federal Ministry of Youth Development",
+        "funding_type": "Venture Capital Grant",
+        "funding_amount": "Up to ₦50M (STEM startups)",
+        "eligibility": "Nigerian students, recent graduates (under 35); STEM, tech, and innovation-focused ventures",
+        "description": "Federal government support for student and graduate entrepreneurs with STEM-focused business ideas. Includes mentorship, training, and non-dilutive funding.",
+        "key_requirements": [
+            "STEM/tech/innovation focus",
+            "Registered business or startup",
+            "Viable business plan with market research",
+            "Evidence of student/recent graduate status",
+        ],
+        "application_url": "https://svcg.education.gov.ng/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+    {
+        "title": "FIRS Business Partners Program (FBP)",
+        "agency": "Federal Inland Revenue Service (FIRS)",
+        "funding_type": "Tax Incentives & Support",
+        "funding_amount": "Tax relief up to 3 years (varies by sector)",
+        "eligibility": "New businesses in priority sectors (agriculture, manufacturing, tech); registered with FIRS",
+        "description": "Tax incentive program supporting new businesses in priority sectors with exemptions and reduced rates for initial operational years.",
+        "key_requirements": [
+            "Business in designated priority sectors",
+            "FIRS tax registration",
+            "Business plan and financial projections",
+            "Compliance with corporate governance standards",
+        ],
+        "application_url": "https://www.firs.gov.ng/",
+        "status": "Active",
+        "updated": "2026-11-15",
+    },
+]
+
 PROJECT_PARTITION_ID = "Balanga/Billiri_GOMBE"
 COLUMNS_STRUCTURE = [
     "NIN",

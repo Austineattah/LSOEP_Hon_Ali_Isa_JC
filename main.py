@@ -1,5 +1,5 @@
 # ==============================================================================
-# ðŸ›ï¸ LSOEP PORTAL PLATFORM ENGINE - SECURE ROUTER MATRICES
+# 🏛️ LSOEP PORTAL PLATFORM ENGINE - SECURE ROUTER MATRICES
 # Project: Balanga/Billiri Federal Constituency (Honourable Ali Isa JC, PhD)
 # File: main.py (V95.0 - Bulletproof Self-Healing Architecture)
 # ==============================================================================
@@ -28,6 +28,7 @@ from styling import inject_custom_css
 from ui_modules import render_hero_banner, render_marquee_header
 from registry import initialize_system_states, HON_TITLE, HON_ALI_SPONSORED_BILLS
 import panels
+from panels.recruitment_panel import render_recruitment_panel
 
 
 @st.cache_resource
@@ -35,10 +36,15 @@ def _pdfium_lock():
     return threading.Lock()
 
 
+def _logout_if_logged_in():
+    if is_logged_in():
+        st.logout()
+
+
 # --- 2. PREMIUM VISUAL CANVAS PLATFORM SETUP ---
 st.set_page_config(
     page_title="LSOEP - Balanga/Billiri Federal Constituency",
-    page_icon="ðŸ›ï¸",
+    page_icon=":material/account_balance:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -62,38 +68,40 @@ initialize_system_states()
 
 # --- 3. SYSTEM MODULE PATHWAYS (UPDATED WITH ALL 13 ACTIVE HUBS) ---
 NAVIGATION_OPTIONS = [
-    "ðŸš€ LEGISLATIVE PROGRESS TRACKER",
-    "ðŸ›ï¸ BEYOND RHETORICS PROJECT EXECUTION",
-    "ðŸ—£ï¸ SPEAK WITH HON. ALI ISA JC DIRECTLY",
-    "ðŸ›¡ï¸ STRATEGIC COMMITTEES (MODULE 13)",
-    "ðŸ›ï¸ LEGISLATIVE FOOTPRINTS",
-    "ðŸ› ï¸ SKILL VOCATION POOL",
-    "ðŸŽ“ STUDENT SCHOLARSHIP/GRANT",
-    "ðŸ” JOB VACANCY VERIFICATION",
-    "ðŸ“‚ FEDERAL & INDUSTRIAL GRANTS",
-    "ðŸ“¦ PALLIATIVE ENROLLMENT",
-    "ðŸ’¡ CV & ARTISAN VAULT",
-    "ðŸš¨ COMMUNITY URGENT NEED",
-    "ðŸ“œ CONSTITUENCY VOUCHING VERIFICATION",
+    "🚀 LEGISLATIVE PROGRESS TRACKER",
+    "🏛️ BEYOND RHETORICS PROJECT EXECUTION",
+    "🗣️ SPEAK WITH HON. ALI ISA JC DIRECTLY",
+    "🛡️ STRATEGIC COMMITTEES (MODULE 13)",
+    "🏛️ LEGISLATIVE FOOTPRINTS",
+    "🛠️ SKILL VOCATION POOL",
+    "🎓 STUDENT SCHOLARSHIP/GRANT",
+    "🔍 JOB VACANCY VERIFICATION",
+    "📂 FEDERAL & INDUSTRIAL GRANTS",
+    "📦 PALLIATIVE ENROLLMENT",
+    "💡 CV & ARTISAN VAULT",
+    "🚨 COMMUNITY URGENT NEED",
+    "📜 CONSTITUENCY VOUCHING VERIFICATION",
 ]
 
-# ðŸ›ï¸ EXACT STRUCTURAL MATRIX TO MATCH INTERNAL PANELS.PY CALL STRINGS
+# 🏛️ EXACT STRUCTURAL MATRIX TO MATCH INTERNAL PANELS.PY CALL STRINGS
 ADMIN_COMMAND_HUBS = [
-    "ðŸ“Š Master Registry Matrix",
-    "ðŸ—£ï¸ Citizen Feedback",
-    "ðŸ“¢ Admin Announcement Control",
-    "âš–ï¸ Database Audit Diagnostics",
-    "ðŸ›¡ï¸ RADAR Deduplication Interceptor",
-    "ðŸŽ“ Scholar Talent Matrix",
-    "ðŸ’Ž Vantedge Influencer Proportions",
-    "ðŸ—³ï¸ Live Election Analytical Sync",
-    "ðŸ“ Ground Truth Form EC8A Data",
-    "ðŸ“‚ Bulk Data Sync Stream",
-    "ðŸ“œ Executive Waiver Ledger",
-    "ðŸš€ Legislative Progress Tracker",
-    "ðŸ“… Long-Term Momentum Monitoring",
-    "ðŸ“‹ Strategic Committee Progress Intake (M14)",
+    "📊 Master Registry Matrix",
+    "🗣️ Citizen Feedback",
+    "📢 Admin Announcement Control",
+    "⚖️ Database Audit Diagnostics",
+    "🛡️ RADAR Deduplication Interceptor",
+    "🎓 Scholar Talent Matrix",
+    "💎 Vantedge Influencer Proportions",
+    "🗳️ Live Election Analytical Sync",
+    "📝 Ground Truth Form EC8A Data",
+    "📂 Bulk Data Sync Stream",
+    "📜 Executive Waiver Ledger",
+    "🚀 Legislative Progress Tracker",
+    "📅 Long-Term Momentum Monitoring",
+    "📋 Strategic Committee Progress Intake (M14)",
 ]
+
+NAVIGATION_OPTIONS.extend(["Jobs Vacancy & Federal Grants"])
 
 restricted_routes = {
     "ADMIN_GATEWAY_CHECKPOINT",
@@ -130,7 +138,7 @@ if "announcement_loaded" not in st.session_state and not is_restricted_route:
 
 # --- 4. SIDEBAR ACCESS CONTROL PORTALS ---
 st.sidebar.markdown(
-    f"""<a href="#" target="_blank" class="inst-link-box">ðŸŒ {HON_TITLE} Official Facebook</a>""",
+    f"""<a href="#" target="_blank" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a>""",
     unsafe_allow_html=True,
 )
 st.sidebar.markdown("<hr>", unsafe_allow_html=True)
@@ -139,19 +147,19 @@ st.sidebar.markdown(
 )
 
 if st.sidebar.button(
-    "ðŸ”‘ EXECUTIVE CONTROL ROOM & HUBS", width="stretch", key="side_btn_admin_main"
+    "🔑 EXECUTIVE CONTROL ROOM & HUBS", width="stretch", key="side_btn_admin_main"
 ):
     st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
     st.rerun()
 
 if st.sidebar.button(
-    "ðŸ—³ï¸ POLLING UNIT AGENT PORTAL", width="stretch", key="side_btn_agent_direct"
+    "🗳️ POLLING UNIT AGENT PORTAL", width="stretch", key="side_btn_agent_direct"
 ):
     st.session_state.current_route = "DIRECT_AGENT_GATE"
     st.rerun()
 
 if st.sidebar.button(
-    "ðŸ›¡ï¸ WARD COLLATION OFFICER HUB", width="stretch", key="side_btn_collation_direct"
+    "🛡️ WARD COLLATION OFFICER HUB", width="stretch", key="side_btn_collation_direct"
 ):
     st.session_state.current_route = "DIRECT_COLLATION_GATE"
     st.rerun()
@@ -171,7 +179,7 @@ selected_route = st.session_state.current_route
 # VIEW 1: PUBLIC GATEWAY DASHBOARD CHANNELS
 # ==============================================================================
 if selected_route == "HOME":
-    # ðŸ›ï¸ STICKY PREMIUM WELCOME ANCHOR (UNTOP OF HERO BANNER CONTAINER)
+    # 🏛️ STICKY PREMIUM WELCOME ANCHOR (UNTOP OF HERO BANNER CONTAINER)
     st.markdown(
         """
         <div style="text-align: center; margin-bottom: 20px; padding: 5px 0;">
@@ -182,7 +190,7 @@ if selected_route == "HOME":
                 </span>
             </h3>
             <p style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; font-size: 0.82rem !important; letter-spacing: 0.12em !important; text-transform: uppercase; color: #00E5FF !important; margin: 5px 0 0 0 !important; opacity: 0.95;">
-                ðŸš€ LETS KEEP WINNING TOGETHER
+                🚀 LETS KEEP WINNING TOGETHER
             </p>
         </div>
         """,
@@ -191,7 +199,7 @@ if selected_route == "HOME":
 
     render_hero_banner()
 
-    # âš¡ SHIFT MARQUEE DOWNWARD VIA STRUCTURAL HEADROOM MARGIN SPACING
+    # ⚡ SHIFT MARQUEE DOWNWARD VIA STRUCTURAL HEADROOM MARGIN SPACING
     st.markdown("<div style='margin-top: 35px;'></div>", unsafe_allow_html=True)
 
     render_marquee_header()
@@ -232,11 +240,11 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 
     render_marquee_header()
     st.markdown(
-        "<h2 class='nav-title' style='color: #D4AF37 !important;'>ðŸ›ï¸ EXECUTIVE ADMINISTRATIVE COMMAND HUBS</h2>",
+        "<h2 class='nav-title' style='color: #D4AF37 !important;'>🏛️ EXECUTIVE ADMINISTRATIVE COMMAND HUBS</h2>",
         unsafe_allow_html=True,
     )
 
-    st.markdown("### ðŸ“ˆ Real-Time Operational Telemetry Stream")
+    st.markdown("### 📈 Real-Time Operational Telemetry Stream")
 
     try:
         saved_records = list_submissions()
@@ -269,9 +277,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
             "Admin Announcement Control": record_counts.get("announcement", 0),
             "Database Audit Diagnostics": len(saved_records),
             "Scholar Talent Matrix": record_counts.get("scholarship_application", 0),
-            "Live Election Analytical Sync": record_counts.get(
-                "polling_unit_tally", 0
-            ),
+            "Live Election Analytical Sync": record_counts.get("polling_unit_tally", 0),
             "Ground Truth Form EC8A Data": record_counts.get("ward_collation", 0),
             "Legislative Progress Tracker": len(HON_ALI_SPONSORED_BILLS),
             "Strategic Committee Progress Intake (M14)": record_counts.get(
@@ -288,7 +294,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 
         v_col1, v_col2 = st.columns(2)
         with v_col1:
-            st.markdown("#### ðŸ“Š Absolute System Transaction Volumes")
+            st.markdown("#### 📊 Absolute System Transaction Volumes")
             st.bar_chart(
                 data=chart_df,
                 x="Module Command Hub",
@@ -298,7 +304,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
             )
 
         with v_col2:
-            st.markdown("#### ðŸ§© Executive Operational Resource Allocation")
+            st.markdown("#### 🧩 Executive Operational Resource Allocation")
             st.dataframe(
                 chart_df.sort_values(by="Active Structural Records", ascending=False),
                 column_config={
@@ -312,15 +318,12 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
             )
 
     st.markdown("---")
-    st.markdown("### ðŸŽ›ï¸ Command Activation Grid Matrix")
+    st.markdown("### 🎛️ Command Activation Grid Matrix")
 
     cols = st.columns(4)
     for i, module_title in enumerate(ADMIN_COMMAND_HUBS):
-        clean_name = (
-            module_title.split(" ", 1)[-1] if " " in module_title else module_title
-        )
         metric_key = [
-            k for k in sync_metrics.keys() if clean_name in k or k in module_title
+            k for k in sync_metrics.keys() if module_title in k or k in module_title
         ]
         count_suffix = f" ({sync_metrics[metric_key[0]]})" if metric_key else ""
 
@@ -332,12 +335,11 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 
     st.markdown("<hr>", unsafe_allow_html=True)
     if st.button(
-        "â†©ï¸ Close Admin Hub and Logout", width="stretch", key="admin_hub_logout_btn"
+        "↩️ Close Admin Hub and Logout", width="stretch", key="admin_hub_logout_btn"
     ):
         st.session_state.current_route = "HOME"
         clear_passcode_access()
-        if is_logged_in():
-            st.logout()
+        _logout_if_logged_in()
         st.rerun()
 
 # ==============================================================================
@@ -345,7 +347,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 # ==============================================================================
 elif selected_route == "DIRECT_AGENT_GATE":
     render_marquee_header()
-    st.markdown("### ðŸ”’ Polling Unit Agent Portal Access Checkpoint")
+    st.markdown("### 🔒 Polling Unit Agent Portal Access Checkpoint")
     if require_role("agent"):
         st.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
         st.rerun()
@@ -362,22 +364,21 @@ elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
 
     render_marquee_header()
     st.markdown(
-        "<h2 style='color: #D4AF37;'>ðŸ—³ï¸ POLLING UNIT AGENT: FIELD DATA TRANSFERS</h2>",
+        "<h2 style='color: #D4AF37;'>🗳️ POLLING UNIT AGENT: FIELD DATA TRANSFERS</h2>",
         unsafe_allow_html=True,
     )
     st.info(
-        "âš¡ Ingestion Stream Active: Execute data snaps and camera capture forms cleanly."
+        "⚡ Ingestion Stream Active: Execute data snaps and camera capture forms cleanly."
     )
     st.markdown("---")
 
     panels.agent_panel()
 
     st.markdown("---")
-    if st.button("â†©ï¸ Securely Terminate Agent Session & Exit", width="stretch"):
+    if st.button("↩️ Securely Terminate Agent Session & Exit", width="stretch"):
         st.session_state.current_route = "HOME"
         clear_passcode_access()
-        if is_logged_in():
-            st.logout()
+        _logout_if_logged_in()
         st.rerun()
 
 # ==============================================================================
@@ -385,7 +386,7 @@ elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
 # ==============================================================================
 elif selected_route == "DIRECT_COLLATION_GATE":
     render_marquee_header()
-    st.markdown("### ðŸ›¡ï¸ Ward Collation Command Security Checkpoint")
+    st.markdown("### 🛡️ Ward Collation Command Security Checkpoint")
     if require_role("collation"):
         st.session_state.current_route = "DIRECT_COLLATION_SCREEN"
         st.rerun()
@@ -412,12 +413,11 @@ else:
     )
     if is_admin_module and not require_role("admin"):
         st.stop()
-
     render_marquee_header()
     back_label = (
-        "â†© ... Return to Admin Hub Matrix"
+        "↩ ... Return to Admin Hub Matrix"
         if is_admin_module
-        else "â†© ... Return to Main Gateway"
+        else "↩ ... Return to Main Gateway"
     )
 
     if st.button(back_label, width="stretch", key="global_return_nav_btn"):
@@ -428,17 +428,15 @@ else:
 
     st.markdown("<hr class='nav-divider'>", unsafe_allow_html=True)
 
-    exec_target = (
-        selected_route.split(" ", 1)[-1] if " " in selected_route else selected_route
-    )
+    exec_target = selected_route
 
     # --- Public Channel Execution Interface ---
-    if selected_route == "ðŸš€ LEGISLATIVE PROGRESS TRACKER":
+    if selected_route == "🚀 LEGISLATIVE PROGRESS TRACKER":
         panels.render_progress_tracker()
 
     # --- BEYOND RHETORICS SUBFOLDER MEDIA CANVAS SWITCHER ENGINE ---
-    elif selected_route == "ðŸ›ï¸ BEYOND RHETORICS PROJECT EXECUTION":
-        st.markdown("## ðŸ¦… BEYOND RHETORICS: PROJECT VERIFICATION HUB")
+    elif selected_route == "🏛️ BEYOND RHETORICS PROJECT EXECUTION":
+        st.markdown("## 🦅 BEYOND RHETORICS: PROJECT VERIFICATION HUB")
         st.caption(
             "Reviewing scanned performance sheets and ground-truth validation archives for Hon. Ali Isa."
         )
@@ -446,16 +444,16 @@ else:
         MEDIA_FOLDER = os.path.join(os.getcwd(), "MEDIA MEDIA MEDIA")
 
         document_map = {
-            "ðŸ“– Document Cover Page": "Cover_compressed.pdf",
-            "ðŸ“„ Page 1 - Project Milestone Overview": "1_compressed.pdf",
-            "ðŸ“„ Page 2 - Infrastructure & Capital Allocations": "2_compressed.pdf",
-            "ðŸ“„ Page 3 - Educational Interventions & Grants": "3_compressed.pdf",
-            "ðŸ“„ Page 4 - Healthcare Programs & Welfare Sync": "4_compressed.pdf",
-            "ðŸ“„ Page 5 - Empowerment Schemes Registry": "5_compressed.pdf",
-            "ðŸ“„ Page 6 - Verifiable Performance Conclusion": "6_compressed.pdf",
+            "📖 Document Cover Page": "Cover_compressed.pdf",
+            "📄 Page 1 - Project Milestone Overview": "1_compressed.pdf",
+            "📄 Page 2 - Infrastructure & Capital Allocations": "2_compressed.pdf",
+            "📄 Page 3 - Educational Interventions & Grants": "3_compressed.pdf",
+            "📄 Page 4 - Healthcare Programs & Welfare Sync": "4_compressed.pdf",
+            "📄 Page 5 - Empowerment Schemes Registry": "5_compressed.pdf",
+            "📄 Page 6 - Verifiable Performance Conclusion": "6_compressed.pdf",
         }
 
-        st.markdown("### ðŸ—‚ï¸ Select Verification Page to Display")
+        st.markdown("### 🗂️ Select Verification Page to Display")
         selected_doc_label = st.selectbox(
             "Choose a ledger segment:", list(document_map.keys())
         )
@@ -507,7 +505,7 @@ else:
                 st.success(f"Connected to: **MEDIA MEDIA MEDIA/{target_filename}**")
             with col2:
                 st.download_button(
-                    label="ðŸ“¥ Download Official Copy",
+                    label="📥 Download Official Copy",
                     data=pdf_bytes,
                     file_name=target_filename,
                     mime="application/pdf",
@@ -532,7 +530,7 @@ else:
                     nav_c1, nav_c2, nav_c3 = st.columns([1, 2, 1])
                     with nav_c1:
                         if st.button(
-                            "â—€ Previous Page",
+                            "◀ Previous Page",
                             disabled=(curr_idx == 0),
                             width="stretch",
                             key=f"prev_{target_filename}",
@@ -547,7 +545,7 @@ else:
                         )
                     with nav_c3:
                         if st.button(
-                            "Next Page â–¶",
+                            "Next Page ▶",
                             disabled=(curr_idx == total_pages - 1),
                             width="stretch",
                             key=f"next_{target_filename}",
@@ -562,45 +560,49 @@ else:
                 st.error(f"Error rendering document pages: {exc}")
         else:
             st.error(
-                f"âŒ PATH LOOKUP ERROR: Could not locate target file at path: {BUNDLE_PATH}"
+                f"❌ PATH LOOKUP ERROR: Could not locate target file at path: {BUNDLE_PATH}"
             )
             st.write("Checking directory layout configuration...")
             if os.path.exists(MEDIA_FOLDER):
                 st.write("Files found inside your folder:", os.listdir(MEDIA_FOLDER))
             else:
                 st.write(
-                    "ðŸš¨ 'MEDIA MEDIA MEDIA' folder path cannot be identified from your app root position."
+                    "🚨 'MEDIA MEDIA MEDIA' folder path cannot be identified from your app root position."
                 )
 
-    elif selected_route == "ðŸ—£ï¸ SPEAK WITH HON. ALI ISA JC DIRECTLY":
+    elif selected_route == "🗣️ SPEAK WITH HON. ALI ISA JC DIRECTLY":
         panels.render_speak_directly_panel()
-    elif selected_route == "ðŸ›¡ï¸ STRATEGIC COMMITTEES (MODULE 13)":
+    elif selected_route == "🛡️ STRATEGIC COMMITTEES (MODULE 13)":
         panels.strategic_committees_panel()
-    elif selected_route == "ðŸ›ï¸ LEGISLATIVE FOOTPRINTS":
+    elif selected_route == "🏛️ LEGISLATIVE FOOTPRINTS":
         panels.render_sponsored_bills_panel()
-    elif selected_route == "ðŸ› ï¸ SKILL VOCATION POOL":
+    elif selected_route == "🛠️ SKILL VOCATION POOL":
         panels.render_skill_form()
-    elif selected_route == "ðŸŽ“ STUDENT SCHOLARSHIP/GRANT":
+    elif selected_route == "🎓 STUDENT SCHOLARSHIP/GRANT":
         panels.render_scholarship_form()
 
     # --- UPGRADED PORTAL CHANNELS DISPATCHED TO CUSTOM PANELS ENGINE ---
-    elif selected_route == "ðŸ” JOB VACANCY VERIFICATION":
+    elif selected_route == "🔍 JOB VACANCY VERIFICATION":
         panels.render_job_verification_panel()
-    elif selected_route == "ðŸ“‚ FEDERAL & INDUSTRIAL GRANTS":
+    elif selected_route == "📂 FEDERAL & INDUSTRIAL GRANTS":
         panels.render_grants_verification_panel()
-    elif selected_route == "ðŸ“œ CONSTITUENCY VOUCHING VERIFICATION":
+    elif selected_route == "📜 CONSTITUENCY VOUCHING VERIFICATION":
         panels.render_vouching_verification_panel()
 
-    elif selected_route == "ðŸ“¦ PALLIATIVE ENROLLMENT":
+    elif selected_route == "📦 PALLIATIVE ENROLLMENT":
         panels.render_palliative_form()
-    elif selected_route == "ðŸ’¡ CV & ARTISAN VAULT":
+    elif selected_route == "💡 CV & ARTISAN VAULT":
         panels.render_cv_vault()
-    elif selected_route == "ðŸš¨ COMMUNITY URGENT NEED":
+    elif selected_route == "🚨 COMMUNITY URGENT NEED":
         panels.render_cun_trigger()
+    
+    elif selected_route == "Jobs Vacancy & Federal Grants":
+        is_admin = st.sidebar.toggle("Admin vetting", key="recruitment_admin_mode")
+        render_recruitment_panel(is_admin_mode=is_admin)
 
-    # --- ðŸ“¢ MODULE 3: ADMIN ANNOUNCEMENT CONTROL ---
+    # --- 📢 MODULE 3: ADMIN ANNOUNCEMENT CONTROL ---
     elif exec_target == "Admin Announcement Control":
-        st.markdown("### ðŸ“¢ Executive Announcement Broadcasting Terminal")
+        st.markdown("### 📢 Executive Announcement Broadcasting Terminal")
         st.info(
             f"**Currently Active Marquee Line:** {st.session_state.global_scrolling_announcement}"
         )
@@ -609,7 +611,7 @@ else:
             value=st.session_state.global_scrolling_announcement,
             key="marquee_broadcast_input_field",
         )
-        if st.button("ðŸš€ Push Live to Portal Ticker", width="stretch"):
+        if st.button("🚀 Push Live to Portal Ticker", width="stretch"):
             if new_broadcast_msg.strip():
                 try:
                     submit_submission(
@@ -627,15 +629,15 @@ else:
     elif exec_target == "Live Election Analytical Sync":
         panels.render_election_analytical_sync()
 
-    # --- ðŸ”’ MODULE 9: EXCLUSIVE GROUND TRUTH LITIGATION MODULE ---
+    # --- 🔒 MODULE 9: EXCLUSIVE GROUND TRUTH LITIGATION MODULE ---
     elif exec_target == "Ground Truth Form EC8A Data":
         panels.render_admin_submissions(["ward_collation", "polling_unit_tally"])
 
-    # --- ðŸ“‹ MODULE 14: STRATEGIC COMMITTEE PROGRESS INTAKE ---
+    # --- 📋 MODULE 14: STRATEGIC COMMITTEE PROGRESS INTAKE ---
     elif exec_target == "Strategic Committee Progress Intake (M14)":
         panels.render_committee_compliance_form()
 
-    # --- ðŸ“ SOLID STATE ROUTE MAPPINGS FOR INDIVIDUAL ADMIN TILES ---
+    # --- 📐 SOLID STATE ROUTE MAPPINGS FOR INDIVIDUAL ADMIN TILES ---
     elif exec_target == "Master Registry Matrix":
         panels.render_admin_submissions(
             [
@@ -662,8 +664,6 @@ else:
         )
     elif exec_target == "Legislative Progress Tracker":
         panels.render_progress_tracker()
-    elif exec_target == "Strategic Committee Progress Intake (M14)":
-        panels.render_committee_compliance_form()
     else:
         st.warning(
             f"{exec_target} is not implemented yet; no live data is available in this module."

@@ -1,0 +1,23 @@
+[
+  {
+    "title": "MDA Regularization Batch",
+    "category": "Federal Civil Service",
+    "description": "Confirm constituency programme details with the office.",
+    "slots": "Unconfirmed - Pending Quota Allocation",
+    "office_verified": false
+  },
+  {
+    "title": "Constituency ICT & Digital Skills Empowerment Training",
+    "category": "Capacity Building",
+    "description": "Confirm constituency programme details with the office.",
+    "slots": "Unconfirmed - Pending Quota Allocation",
+    "office_verified": false
+  },
+  {
+    "title": "Agricultural Mechanization & Agro-Allied Support Scheme",
+    "category": "Agric & Rural Enterprise",
+    "description": "Confirm constituency programme details with the office.",
+    "slots": "Unconfirmed - Pending Quota Allocation",
+    "office_verified": false
+  }
+]

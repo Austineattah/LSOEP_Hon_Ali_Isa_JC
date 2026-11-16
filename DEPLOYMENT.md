@@ -59,6 +59,25 @@ required. Back up the
 project and define retention/access procedures appropriate for the personal
 data collected.
 
+## Recruitment and election panels
+
+The recruitment panel saves applications and append-only vetting decisions in
+`portal_submissions`. Applicant identity and contact details are personal data;
+restrict database access and define retention procedures before deployment.
+The vetting firewall requires an OIDC-authenticated, allowlisted administrator
+and the admin passcode, even when the general role configuration is open.
+
+The constituency registry editor changes `data/constituency_baseline.json` on
+the local filesystem and clears the local scraper cache. Changes can be lost on
+redeployment and do not synchronize across application instances; concurrent
+multi-instance editing is not supported. Use a writable, persistent
+single-instance deployment for this editor.
+
+Election results and uploaded EC8A files are held only in the agent's Streamlit
+session. They are not shared across sessions or saved after the session ends.
+The election war room requires agent access. Recruitment vetting is enabled
+using the sidebar toggle on the recruitment page and remains administrator-only.
+
 ## Project verification documents
 
 Install the project's Python dependencies, including pypdfium2 and Pillow, and

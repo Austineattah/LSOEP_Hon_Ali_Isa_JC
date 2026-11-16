@@ -150,7 +150,7 @@ def render_marquee_header():
         "global_scrolling_announcement",
         f"Welcome to the official constituency outreach portal of {HON_TITLE}. This platform is designed for transparency, accountability, and direct engagement.",
     )
-    long_announcement = (announcement + " • ") * 3
+    long_announcement = (announcement + " | ") * 3
     safe_announcement = html.escape(long_announcement)
     st.markdown(
         f"""

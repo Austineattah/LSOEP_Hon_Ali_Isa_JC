@@ -221,7 +221,8 @@ def submit_submission(submission_type, payload, uploads=None, dedupe_fields=None
     except requests.RequestException as exc:
         raise PersistenceError("The submission could not be saved.") from exc
 
-    st.cache_data.clear()
+    st.cache_data.clear()  # Clear all cached data to ensure fresh submissions load
+    
     try:
         result = response.json()
     except ValueError as exc:

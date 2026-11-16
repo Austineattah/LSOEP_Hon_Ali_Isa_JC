@@ -5,14 +5,17 @@ import time
 import os
 import html
 import re
+import textwrap
 
 from auth import has_committee_access, is_logged_in, render_login_prompt, require_role
+from panels.election_war_room import render_election_war_room
 from persistence import PersistenceError, list_submissions, submit_submission
 from registry import (
     LGA_WARD_DATA,
     STRATEGIC_COMMITTEE_NAMES,
     HON_ALI_SPONSORED_BILLS,
     HON_TITLE,
+    FEDERAL_INDUSTRIAL_GRANTS,
 )
 
 
@@ -45,54 +48,46 @@ def render_constituency_engagement_channels():
 
     ENGAGEMENT_CHANNELS = [
         {
-            "icon": "🚀",
             "label": "LEGISLATIVE PROGRESS TRACKER",
             "route": "PROGRESS_TRACKER",
         },
         {
-            "icon": "🏛️",
             "label": "BEYOND RHETORICS PROJECT EXECUTION",
             "route": "BEYOND_RHETORICS",
         },
         {
-            "icon": "🗣️",
             "label": "SPEAK WITH HON. ALI ISA JC DIRECTLY",
             "route": "SPEAK_DIRECT",
         },
         {
-            "icon": "🛡️",
             "label": "STRATEGIC COMMITTEES (MODULE 13)",
             "route": "STRATEGIC_COMMITTEES",
         },
         {
-            "icon": "🏛️",
             "label": "LEGISLATIVE FOOTPRINTS",
             "route": "LEGISLATIVE_FOOTPRINTS",
         },
-        {"icon": "🛠️", "label": "SKILL VOCATION POOL", "route": "SKILL_POOL"},
-        {"icon": "🎓", "label": "STUDENT SCHOLARSHIP/GRANT", "route": "SCHOLARSHIPS"},
+        {"label": "SKILL VOCATION POOL", "route": "SKILL_POOL"},
+        {"label": "STUDENT SCHOLARSHIP/GRANT", "route": "SCHOLARSHIPS"},
         {
-            "icon": "🔍",
             "label": "JOB VACANCY VERIFICATION",
             "route": "JOB_VERIFICATION",
         },
         {
-            "icon": "📂",
             "label": "FEDERAL & INDUSTRIAL GRANTS",
             "route": "GRANTS_VERIFICATION",
         },
-        {"icon": "📦", "label": "PALLIATIVE ENROLLMENT", "route": "PALLIATIVES"},
-        {"icon": "💡", "label": "CV & ARTISAN VAULT", "route": "CV_VAULT"},
-        {"icon": "🚨", "label": "COMMUNITY URGENT NEED", "route": "URGENT_NEED"},
+        {"label": "PALLIATIVE ENROLLMENT", "route": "PALLIATIVES"},
+        {"label": "CV & ARTISAN VAULT", "route": "CV_VAULT"},
+        {"label": "COMMUNITY URGENT NEED", "route": "URGENT_NEED"},
         {
-            "icon": "📜",
             "label": "CONSTITUENCY VOUCHING VERIFICATION",
             "route": "VOUCHING_VERIFICATION",
         },
     ]
 
     for channel in ENGAGEMENT_CHANNELS:
-        button_label = f"{channel['icon']} {channel['label']}"
+        button_label = channel["label"]
         if st.button(
             button_label,
             key=f"eng_chan_btn_{channel['route']}",
@@ -154,15 +149,11 @@ def render_admin_announcement_control():
         ):
             if new_ticker.strip():
                 try:
-                    submit_submission(
-                        "announcement", {"message": new_ticker.strip()}
-                    )
+                    submit_submission("announcement", {"message": new_ticker.strip()})
                 except PersistenceError as exc:
                     st.error(str(exc))
                 else:
-                    st.session_state.global_scrolling_announcement = (
-                        new_ticker.strip()
-                    )
+                    st.session_state.global_scrolling_announcement = new_ticker.strip()
                     st.success("The announcement was saved and published.")
                     st.rerun()
             else:
@@ -247,7 +238,9 @@ def render_skill_form():
             "🚀 COMMIT APPLICATION TO TRAINING POOLS", width="stretch"
         ):
             final_ward = manual_kward.strip() if manual_kward.strip() else kward
-            if not (sv_name and sv_phone and sv_nin and sv_vin and sv_stmt and final_ward):
+            if not (
+                sv_name and sv_phone and sv_nin and sv_vin and sv_stmt and final_ward
+            ):
                 st.error(
                     "🛑 FORM ERROR: All core validation strings, documents, and biometric snapshot frames are mandatory."
                 )
@@ -256,7 +249,9 @@ def render_skill_form():
             elif not _valid_phone(sv_phone):
                 st.error("Enter a valid contact phone number.")
             elif not sv_file or not sv_cam:
-                st.error("Upload the NIN slip and provide the requested camera capture.")
+                st.error(
+                    "Upload the NIN slip and provide the requested camera capture."
+                )
             else:
                 saved = _commit_submission(
                     "skill_application",
@@ -337,14 +332,23 @@ def render_scholarship_form():
             width="stretch",
         ):
             final_ward = manual_sward.strip() if manual_sward.strip() else sward
-            if not (sch_name and sch_nin and sch_phone and sch_inst and sch_just and final_ward):
+            if not (
+                sch_name
+                and sch_nin
+                and sch_phone
+                and sch_inst
+                and sch_just
+                and final_ward
+            ):
                 st.error("Please fill all required fields.")
             elif len(sch_nin) != 11 or not sch_nin.isdigit():
                 st.error("NIN must contain exactly 11 digits.")
             elif not _valid_phone(sch_phone):
                 st.error("Enter a valid contact phone number.")
             elif not sch_file_nin or not sch_file_adm or not sch_cam:
-                st.error("Upload both required documents and provide the student ID capture.")
+                st.error(
+                    "Upload both required documents and provide the student ID capture."
+                )
             else:
                 saved = _commit_submission(
                     "scholarship_application",
@@ -611,9 +615,7 @@ def render_palliative_form(focus_on_vouching=False):
             )
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button(
-            "🗳️ Submit Direct Self-Application Profile", width="stretch"
-        ):
+        if st.button("🗳️ Submit Direct Self-Application Profile", width="stretch"):
             if len(p_nin) != 11 or not p_nin.isdigit():
                 st.error(
                     "🛑 Your National Identity Number (NIN) must be exactly 11 digits."
@@ -750,9 +752,7 @@ def render_palliative_form(focus_on_vouching=False):
             )
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button(
-            "🗳️ Register Certified Welfare Vouching Profile", width="stretch"
-        ):
+        if st.button("🗳️ Register Certified Welfare Vouching Profile", width="stretch"):
             if (
                 len(leader_nin) != 11
                 or not leader_nin.isdigit()
@@ -843,8 +843,12 @@ def render_sponsored_bills_panel():
                 st.markdown(f"**📅 Date Logged:** {item['date']}")
             with col2:
                 # Add status indicators based on active progression states
-                status_color = "🟢" if "Passed" in item["status"] else "🟡"
-                st.markdown(f"**📋 Current Status:** {status_color} {item['status']}")
+                status_indicator = (
+                    "[Passed]" if "Passed" in item["status"] else "[In progress]"
+                )
+                st.markdown(
+                    f"**📋 Current Status:** {status_indicator} {item['status']}"
+                )
             with col3:
                 st.progress(item["progress"] / 100.0)
                 st.caption(f"Process Completion Density: {item['progress']}%")
@@ -975,7 +979,9 @@ def ward_collation_officer_panel():
             elif apc_votes + pdp_votes + lp_votes + nnpp_votes > accredited_voters:
                 st.error("The party vote total cannot exceed accredited voters.")
             elif not collation_evidence:
-                st.error("Capture the Form EC8A evidence before generating the receipt.")
+                st.error(
+                    "Capture the Form EC8A evidence before generating the receipt."
+                )
             else:
                 st.session_state.sup_slip_preview = {
                     "Supervisor": sup_name,
@@ -1182,7 +1188,9 @@ def agent_panel():
             elif not _valid_phone(pu_phone):
                 st.error("Enter a valid contact phone number.")
             elif not pu_evidence:
-                st.error("Capture the signed polling-unit result slip before submitting.")
+                st.error(
+                    "Capture the signed polling-unit result slip before submitting."
+                )
             elif calculated_sum > pu_accredited:
                 st.error(
                     f"🚨 MATHEMATICAL IMPOSSIBILITY: Aggregate party votes ({calculated_sum:,}) cannot exceed total accredited voters ({pu_accredited:,})."
@@ -1324,20 +1332,109 @@ def _render_saved_submissions(submission_types):
         st.info("No saved submissions are available for this view.")
         return
 
+    # Convert records to DataFrame for processing
+    df = pd.DataFrame(
+        [
+            {
+                "Submission Type": record["submission_type"],
+                "Created At": record["created_at"],
+                "ID": record.get("id", ""),
+                **record["payload"],
+            }
+            for record in records
+        ]
+    )
+
+    # Add search and filter controls
+    st.markdown("### 📊 Live Submission Metrics & Management")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Submissions", len(df))
+    with col2:
+        st.metric("Submission Types", df["Submission Type"].nunique() if "Submission Type" in df.columns else 0)
+    with col3:
+        st.metric("Latest Update", df["Created At"].max() if "Created At" in df.columns else "N/A")
+
+    st.write("---")
+
+    # Search and filter
+    search_col, filter_col = st.columns(2)
+    with search_col:
+        search_term = st.text_input(
+            "🔍 Search submissions",
+            placeholder="Search by name, phone, NIN, or any field...",
+            key="admin_submissions_search",
+        )
+    
+    with filter_col:
+        if "Submission Type" in df.columns:
+            all_types = ["All Types"] + sorted(df["Submission Type"].unique().tolist())
+            filter_type = st.selectbox(
+                "📋 Filter by type",
+                all_types,
+                key="admin_submissions_filter",
+            )
+        else:
+            filter_type = "All Types"
+
+    # Apply filters
+    filtered_df = df
+    if search_term:
+        mask = filtered_df.astype(str).apply(
+            lambda x: x.str.contains(search_term, case=False, na=False)
+        ).any(axis=1)
+        filtered_df = filtered_df[mask]
+    
+    if filter_type != "All Types" and "Submission Type" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["Submission Type"] == filter_type]
+
+    # Display results
+    st.caption(
+        f"📊 Showing {len(filtered_df)} of {len(df)} submissions "
+        f"({len(df) - len(filtered_df)} filtered out)"
+    )
+
+    # Searchable/filterable dataframe
     st.dataframe(
-        pd.DataFrame(
-            [
-                {
-                    "Submission Type": record["submission_type"],
-                    "Created At": record["created_at"],
-                    **record["payload"],
-                }
-                for record in records
-            ]
-        ),
+        filtered_df.drop(columns=["ID"], errors="ignore"),
         hide_index=True,
         width="stretch",
+        use_container_width=True,
     )
+
+    # Export functionality
+    st.markdown("---")
+    export_col1, export_col2, export_col3 = st.columns([1, 1, 1])
+    
+    with export_col1:
+        # CSV Export
+        csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Export as CSV",
+            data=csv_data,
+            file_name=f"submissions_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    
+    with export_col2:
+        # Excel Export (if openpyxl available)
+        try:
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                filtered_df.to_excel(writer, index=False, sheet_name='Submissions')
+            excel_data = output.getvalue()
+            st.download_button(
+                label="📊 Export as Excel",
+                data=excel_data,
+                file_name=f"submissions_export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+        except ImportError:
+            st.info("ℹ️ Excel export requires openpyxl package")
 
 
 def render_admin_submissions(submission_types=None):
@@ -1365,9 +1462,7 @@ def strategic_committees_panel():
         return
 
     st.markdown(f"### 📋 Member Registration for: {selected_committee}")
-    with st.form(
-        key=f"strategic_reg_form_{selected_committee}", clear_on_submit=False
-    ):
+    with st.form(key=f"strategic_reg_form_{selected_committee}", clear_on_submit=False):
         st.caption("Enter the verified details of the committee member:")
 
         st.markdown("##### 📸 Biometric Facial Capture")
@@ -1422,9 +1517,7 @@ def strategic_committees_panel():
             f"➕ Register Member for {selected_committee}",
             width="stretch",
         ):
-            final_ward = (
-                manual_ward.strip() if manual_ward.strip() else selected_ward
-            )
+            final_ward = manual_ward.strip() if manual_ward.strip() else selected_ward
             if not all(
                 [
                     member_name,
@@ -1544,9 +1637,7 @@ def render_speak_directly_panel():
             placeholder=f"Type your direct message to Hon. Ali Isa JC here...",
         )
 
-        if st.form_submit_button(
-            "🚀 Transmit Message to Leader", width="stretch"
-        ):
+        if st.form_submit_button("🚀 Transmit Message to Leader", width="stretch"):
             final_ward = manual_ward.strip() if manual_ward.strip() else selected_ward
             if not (full_name and message_body and final_ward):
                 st.error(
@@ -1601,8 +1692,14 @@ def render_committee_compliance_form():
         if st.form_submit_button(
             "🔒 Transmit Report to Executive Control Room", width="stretch"
         ):
-            if not (officer_name.strip() and regional_scope.strip() and activity_summary.strip()):
-                st.error("Provide the reporting official, location, and activity summary.")
+            if not (
+                officer_name.strip()
+                and regional_scope.strip()
+                and activity_summary.strip()
+            ):
+                st.error(
+                    "Provide the reporting official, location, and activity summary."
+                )
             else:
                 saved = _commit_submission(
                     "committee_compliance",
@@ -1618,6 +1715,7 @@ def render_committee_compliance_form():
                     st.success(
                         f"Report for {officer_name} was saved under {committee_group.split(':')[0]}."
                     )
+                    st.balloons()
 
 
 def render_election_analytical_sync():
@@ -1652,6 +1750,10 @@ def render_election_analytical_sync():
             }
         )
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    
+    st.markdown("---")
+    st.markdown("### 🗳️ ELECTION WAR ROOM (SECURE ADMIN ONLY)")
+    render_election_war_room()
 
 
 def render_vouching_form():
@@ -1674,11 +1776,34 @@ def render_constituent_plenary_updates():
 
 def render_job_verification_panel():
     st.markdown("### Verified Federal & Constituency Recruitment Listings")
-    st.markdown("Official employment opportunities, federal agency placements, and constituency empowerment programs.")
+    st.markdown(
+        "Official employment opportunities, federal agency placements, and constituency empowerment programs."
+    )
     listings = [
-        {"title": "Federal Ministries, Departments & Agencies (MDA) Regularization Batch", "category": "Federal Civil Service", "deadline": "Active - Open for Verification", "status": "Verified Active", "description": "Verification window for constituents nominated under federal manpower development and specialized MDAs.", "slots": "150 Allocated Slots"},
-        {"title": "Constituency ICT & Digital Skills Empowerment Training", "category": "Capacity Building", "deadline": "Ongoing Registration", "status": "Open for Applications", "description": "Hands-on technical training program covering software development, data analytics, and digital entrepreneurship.", "slots": "300 Trainee Slots"},
-        {"title": "Agricultural Mechanization & Agro-Allied Support Scheme", "category": "Agric & Rural Enterprise", "deadline": "Next Batch Commencing Soon", "status": "Verification in Progress", "description": "Distribution of improved seedlings, fertilizers, and modern farming implements for registered farmers cooperatives.", "slots": "Cooperative Level"}
+        {
+            "title": "Federal Ministries, Departments & Agencies (MDA) Regularization Batch",
+            "category": "Federal Civil Service",
+            "deadline": "Active - Open for Verification",
+            "status": "Verified Active",
+            "description": "Verification window for constituents nominated under federal manpower development and specialized MDAs.",
+            "slots": "150 Allocated Slots",
+        },
+        {
+            "title": "Constituency ICT & Digital Skills Empowerment Training",
+            "category": "Capacity Building",
+            "deadline": "Ongoing Registration",
+            "status": "Open for Applications",
+            "description": "Hands-on technical training program covering software development, data analytics, and digital entrepreneurship.",
+            "slots": "300 Trainee Slots",
+        },
+        {
+            "title": "Agricultural Mechanization & Agro-Allied Support Scheme",
+            "category": "Agric & Rural Enterprise",
+            "deadline": "Next Batch Commencing Soon",
+            "status": "Verification in Progress",
+            "description": "Distribution of improved seedlings, fertilizers, and modern farming implements for registered farmers cooperatives.",
+            "slots": "Cooperative Level",
+        },
     ]
     for item in listings:
         with st.container():
@@ -1687,21 +1812,142 @@ def render_job_verification_panel():
             cols[0].caption(f"**Category:** {item['category']}")
             cols[1].caption(f"**Status:** {item['status']}")
             cols[2].caption(f"**Timeline:** {item['deadline']}")
-            st.write(item['description'])
+            st.write(item["description"])
             st.info(f"**Scope:** {item['slots']}")
             st.divider()
-    st.success("To verify your application status or submit required credentials, use the Candidate Verification portal tab.")
+    st.success(
+        "To verify your application status or submit required credentials, use the Candidate Verification portal tab."
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner="Loading verified federal grants...")
+def _load_federal_grants_cached():
+    """Cache verified federal grants for 1 hour."""
+    return FEDERAL_INDUSTRIAL_GRANTS
 
 
 def render_grants_verification_panel():
-    st.header("📂 Federal Palliative & Industrial Grants Matrix")
+    """
+    📂 FEDERAL INDUSTRIAL GRANTS & SCHEMES VERIFICATION PORTAL
+    Displays verified, active Nigerian Federal Government industrial grants
+    with direct application links and eligibility information.
+    """
+    st.header("📂 Federal Industrial Grants & Schemes Portal")
     st.caption(
-        "Current grant availability is not verified by this portal. Confirm eligibility and application status directly with the responsible agency."
+        "Verified active federal government intervention programs for Nigerian MSMEs, startups, and exporters. "
+        "Always verify eligibility and application requirements directly with the implementing agency."
     )
-    st.info("No current, verified grant listings are available.")
     st.warning(
-        "⚠️ **Security Vetting Advisory:** Authentic federal government intervention programs will **never** demand processing fees or your bank account transaction PIN codes."
+        "🔐 **Security Vetting Advisory:** Authentic federal government schemes will **never** demand processing fees, "
+        "bank account details, or your NIN/card PIN codes upfront. Verify all communications through official portals only."
     )
+    st.write("---")
+
+    # Load grants
+    grants = _load_federal_grants_cached()
+
+    if not grants:
+        st.info("No verified grant listings are currently available. Please check back soon.")
+        return
+
+    # Search & Filter Controls
+    col1, col2 = st.columns(2)
+    with col1:
+        search_term = st.text_input(
+            "🔍 Search grants",
+            placeholder="Search by title, agency, or keywords...",
+            key="grants_search",
+        )
+    with col2:
+        filter_agency = st.selectbox(
+            "Filter by implementing agency",
+            options=["All Agencies"] + sorted(list(set(g["agency"] for g in grants))),
+            key="grants_filter",
+        )
+
+    # Apply filters
+    filtered_grants = grants
+    if search_term:
+        search_lower = search_term.lower()
+        filtered_grants = [
+            g
+            for g in filtered_grants
+            if search_lower in g["title"].lower()
+            or search_lower in g["agency"].lower()
+            or search_lower in g["description"].lower()
+            or search_lower in " ".join(g.get("key_requirements", [])).lower()
+        ]
+
+    if filter_agency != "All Agencies":
+        filtered_grants = [g for g in filtered_grants if g["agency"] == filter_agency]
+
+    # Display metrics
+    st.markdown(f"**📊 Showing {len(filtered_grants)} of {len(grants)} grants**")
+    st.write("---")
+
+    # Render grants as high-contrast cards
+    if not filtered_grants:
+        st.info("No grants match your search. Try different keywords or filters.")
+        return
+
+    for grant in filtered_grants:
+        # Build requirements list HTML
+        reqs_html = "\n".join(
+            f"<li style='color: #F7FAFC;'>{html.escape(req)}</li>"
+            for req in grant.get("key_requirements", [])
+        )
+
+        # Create card HTML without leading indentation
+        card_html = textwrap.dedent(f"""\
+<div style="background: linear-gradient(135deg, #12161F 0%, #0E1117 100%); border: 1px solid #D4AF37; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+<div>
+<h3 style="color: #FFFFFF; margin: 0 0 4px 0; font-size: 18px; font-weight: 600;">{html.escape(grant['title'])}</h3>
+<p style="color: #D4AF37; margin: 0; font-size: 13px; font-weight: 500;">{html.escape(grant['agency'])}</p>
+</div>
+<span style="background: #D4AF37; color: #0E1117; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">{grant['status']}</span>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #D4AF37; opacity: 0.9;">
+<div>
+<p style="color: #A0AEC0; margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Funding Type</p>
+<p style="color: #FFFFFF; margin: 0; font-size: 14px; font-weight: 500;">{html.escape(grant['funding_type'])}</p>
+</div>
+<div>
+<p style="color: #A0AEC0; margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Funding Amount</p>
+<p style="color: #D4AF37; margin: 0; font-size: 14px; font-weight: 600;">{html.escape(grant['funding_amount'])}</p>
+</div>
+</div>
+<p style="color: #F7FAFC; margin: 0 0 12px 0; font-size: 14px; line-height: 1.6;">{html.escape(grant['description'])}</p>
+<div style="margin-bottom: 12px;">
+<p style="color: #A0AEC0; margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Eligibility</p>
+<p style="color: #F7FAFC; margin: 0; font-size: 13px; line-height: 1.5;">{html.escape(grant['eligibility'])}</p>
+</div>
+<div style="margin-bottom: 16px;">
+<p style="color: #A0AEC0; margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Key Requirements</p>
+<ul style="color: #F7FAFC; margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+{reqs_html}
+</ul>
+</div>
+</div>""")
+
+        # Render card
+        st.markdown(card_html, unsafe_allow_html=True)
+
+        # Application button row
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.link_button(
+                "🔗 Apply on Official Portal",
+                url=grant["application_url"],
+                help=f"Direct link to {grant['agency']} application portal",
+                use_container_width=True,
+            )
+        with col2:
+            st.caption(f"Updated: {grant['updated']}")
+        with col3:
+            st.caption(grant["status"])
+
+        st.write("")  # Spacing
 
 
 def render_top_vacancy_alerts():

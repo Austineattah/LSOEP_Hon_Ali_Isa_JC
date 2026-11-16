@@ -315,11 +315,199 @@ def inject_custom_css():
                 border-color: #FFFFFF !important;
             }
 
-            div[data-testid="stForm"], .stButton>button {
-                background: rgba(5, 22, 43, 0.5) !important;
+            /* --- 🔐 HIGH-CONTRAST FORM CONTAINER STYLING (SECURE ADMIN ONLY) --- */
+            div[data-testid="stForm"] {
+                background: linear-gradient(135deg, #12161F 0%, #0E1117 100%) !important;
+                border: 1px solid #D4AF37 !important;
+                border-radius: 8px !important;
+                padding: 20px !important;
                 backdrop-filter: blur(10px) saturate(140%) !important;
-                border: 1px solid #0B3C5D !important;
+            }
+
+            /* --- 🔐 TEXT INPUT FIELDS (HIGH CONTRAST) --- */
+            .stTextInput > div > div > input,
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="number"],
+            input[type="date"],
+            input[type="time"],
+            textarea {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 1px solid #2D3748 !important;
                 border-radius: 4px !important;
+                padding: 10px 12px !important;
+                font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+                font-size: 0.95rem !important;
+            }
+
+            /* Input placeholder text - crisp visibility */
+            .stTextInput > div > div > input::placeholder,
+            input[type="text"]::placeholder,
+            input[type="email"]::placeholder,
+            input[type="password"]::placeholder,
+            input[type="number"]::placeholder,
+            input[type="date"]::placeholder,
+            input[type="time"]::placeholder,
+            textarea::placeholder {
+                color: #A0AEC0 !important;
+                opacity: 1 !important;
+            }
+
+            /* Input focus state - gold border */
+            .stTextInput > div > div > input:focus,
+            input[type="text"]:focus,
+            input[type="email"]:focus,
+            input[type="password"]:focus,
+            input[type="number"]:focus,
+            input[type="date"]:focus,
+            input[type="time"]:focus,
+            textarea:focus {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 2px solid #D4AF37 !important;
+                box-shadow: 0 0 12px rgba(212, 175, 55, 0.3) !important;
+                outline: none !important;
+            }
+
+            /* --- 🔐 SELECT BOX / DROPDOWN STYLING (HIGH CONTRAST) --- */
+            .stSelectbox > div > div > select,
+            .stSelectbox [data-baseweb="select"],
+            select {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 1px solid #2D3748 !important;
+                border-radius: 4px !important;
+            }
+
+            .stSelectbox [data-baseweb="select"] > div {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 1px solid #2D3748 !important;
+            }
+
+            .stSelectbox [data-baseweb="select"] input {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+            }
+
+            .stSelectbox [data-baseweb="select"]:focus-within {
+                border-color: #D4AF37 !important;
+                box-shadow: 0 0 12px rgba(212, 175, 55, 0.3) !important;
+            }
+
+            /* Dropdown menu styling */
+            [data-baseweb="popover"] > div {
+                background-color: #1B202C !important;
+                border: 1px solid #D4AF37 !important;
+                border-radius: 4px !important;
+            }
+
+            [data-baseweb="menu"] > div > div,
+            [data-baseweb="menu"] li {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+            }
+
+            [data-baseweb="menu"] li:hover {
+                background-color: #2D3748 !important;
+                color: #D4AF37 !important;
+            }
+
+            /* --- 🔐 NUMBER INPUT STYLING (HIGH CONTRAST) --- */
+            .stNumberInput > div > div > input,
+            .stNumberInput input[type="number"] {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 1px solid #2D3748 !important;
+                border-radius: 4px !important;
+                padding: 10px 12px !important;
+            }
+
+            .stNumberInput > div > div > input:focus,
+            .stNumberInput input[type="number"]:focus {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 2px solid #D4AF37 !important;
+                box-shadow: 0 0 12px rgba(212, 175, 55, 0.3) !important;
+            }
+
+            /* --- 🔐 TEXT AREA STYLING (HIGH CONTRAST) --- */
+            .stTextArea > div > div > textarea,
+            textarea {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 1px solid #2D3748 !important;
+                border-radius: 4px !important;
+                padding: 10px 12px !important;
+                min-height: 80px !important;
+                font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+            }
+
+            .stTextArea > div > div > textarea:focus,
+            textarea:focus {
+                background-color: #1B202C !important;
+                color: #FFFFFF !important;
+                border: 2px solid #D4AF37 !important;
+                box-shadow: 0 0 12px rgba(212, 175, 55, 0.3) !important;
+            }
+
+            /* --- 🔐 FORM LABELS & CAPTIONS (OFF-WHITE, CRISP VISIBILITY) --- */
+            .stForm label,
+            .stTextInput label,
+            .stSelectbox label,
+            .stNumberInput label,
+            .stTextArea label,
+            label {
+                color: #F7FAFC !important;
+                font-weight: 600 !important;
+                font-size: 0.95rem !important;
+                margin-bottom: 6px !important;
+            }
+
+            /* Form caption styling */
+            .stCaption,
+            .stSmall,
+            .stHelp {
+                color: #A0AEC0 !important;
+                font-size: 0.85rem !important;
+            }
+
+            /* --- 🔐 RADIO & CHECKBOX STYLING (HIGH CONTRAST) --- */
+            .stRadio > div > div,
+            .stCheckbox > div > div {
+                background-color: transparent !important;
+            }
+
+            .stRadio label,
+            .stCheckbox label {
+                color: #F7FAFC !important;
+                font-weight: 500 !important;
+            }
+
+            /* --- 🔐 EXPANDER/ACCORDION STYLING --- */
+            .streamlit-expanderHeader {
+                background-color: #161B26 !important;
+                color: #F7FAFC !important;
+                border: 1px solid #2D3748 !important;
+            }
+
+            .streamlit-expanderHeader:hover {
+                background-color: #1B202C !important;
+                border-color: #D4AF37 !important;
+            }
+
+            .streamlit-expanderContent {
+                background-color: #0E1117 !important;
+            }
+
+            div[data-testid="stForm"], .stButton>button {
+                background: linear-gradient(135deg, #12161F 0%, #0E1117 100%) !important;
+                backdrop-filter: blur(10px) saturate(140%) !important;
+                border: 1px solid #D4AF37 !important;
+                border-radius: 8px !important;
+                padding: 20px !important;
             }
 
             .stButton>button {
