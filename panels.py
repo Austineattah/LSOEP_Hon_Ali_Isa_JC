@@ -1967,3 +1967,22 @@ def render_vouching_verification_panel():
         "This module allows authenticated community leaders to vouch for members of their community, streamlining access to empowerment programs and grants. Please fill out your credentials as the vouching leader and the details of the applicant you are endorsing."
     )
     render_palliative_form(focus_on_vouching=True)
+
+
+def render_constituency_voting_panel():
+    """Renders the SQLite-backed constituency voting portal inside the LSOEP layout."""
+    from voting_component import render_secure_voting_grid
+
+    st.markdown(
+        "<h2 class='nav-title' style='color: #D4AF37 !important;'>🗳️ BALANGA / BILLIRI CONSTITUENCY VOTING PORTAL</h2>",
+        unsafe_allow_html=True,
+    )
+    st.caption("Official Digital Ballot & Real-Time Constituency Polling Telemetry")
+
+    candidates = [
+        {"id": "cand_01", "name": "Rt. Hon. Ali Isa JC PhD", "party": "PDP"},
+        {"id": "cand_02", "name": "Hon. Candidate B", "party": "APC"},
+        {"id": "cand_03", "name": "Hon. Candidate C", "party": "NNPP"},
+    ]
+
+    render_secure_voting_grid(candidates=candidates, show_live_results=True)

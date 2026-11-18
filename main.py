@@ -81,6 +81,7 @@ NAVIGATION_OPTIONS = [
     "💡 CV & ARTISAN VAULT",
     "🚨 COMMUNITY URGENT NEED",
     "📜 CONSTITUENCY VOUCHING VERIFICATION",
+    "🗳️ SECURE CONSTITUENCY VOTING",
 ]
 
 # 🏛️ EXACT STRUCTURAL MATRIX TO MATCH INTERNAL PANELS.PY CALL STRINGS
@@ -595,6 +596,8 @@ else:
         panels.render_cv_vault()
     elif selected_route == "🚨 COMMUNITY URGENT NEED":
         panels.render_cun_trigger()
+    elif selected_route == "🗳️ SECURE CONSTITUENCY VOTING":
+        panels.render_constituency_voting_panel()
     
     elif selected_route == "Jobs Vacancy & Federal Grants":
         is_admin = st.sidebar.toggle("Admin vetting", key="recruitment_admin_mode")
