@@ -143,6 +143,23 @@ if "announcement_loaded" not in st.session_state and not is_restricted_route:
     st.session_state.announcement_loaded = True
 
 
+def _get_official_facebook_url() -> str:
+    raw = os.getenv("OFFICIAL_FACEBOOK_URL") or os.getenv("FACEBOOK_URL") or ""
+    if not raw:
+        try:
+            raw = (
+                st.secrets.get("OFFICIAL_FACEBOOK_URL")
+                or st.secrets.get("FACEBOOK_URL")
+                or ""
+            )
+        except Exception:
+            raw = ""
+    url = str(raw).strip()
+    if url.startswith(("https://", "http://")):
+        return url
+    return "https://www.facebook.com/"
+
+
 PORTAL_GATE_PASSCODE = os.getenv("PORTAL_GATE_PASSCODE", "aliisa2027")
 
 
@@ -227,11 +244,11 @@ if selected_route == "HOME":
 
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown(
-        "<h3 class='nav-title' style='color: #D4AF37 !important;'>RESTRICTED OPERATIONAL & ELECTION COMMAND TABS</h3>",
+        "<h3 class='nav-title' style='color: #D4AF37 !important;'>Gate</h3>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        f'<div style="margin-bottom: 14px;"><a href="#" target="_blank" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a></div>',
+        f'<div style="margin-bottom: 14px;"><a href="{_get_official_facebook_url()}" target="_blank" rel="noopener noreferrer" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a></div>',
         unsafe_allow_html=True,
     )
     if is_logged_in():
@@ -241,46 +258,45 @@ if selected_route == "HOME":
             st.session_state.portal_layer_unlocked = False
             clear_passcode_access()
             st.logout()
-    tab_admin, tab_pu, tab_col = st.tabs(
-        [
-            "Admin Login Hub",
-            "Polling Unit Agent Hub",
-            "Collation Officer Hub",
-        ]
-    )
+    (gate_tab,) = st.tabs(["Gate"])
+    with gate_tab:
+        if _require_portal_access_layer("Gate", "home_gate"):
+            role_admin_tab, role_pu_tab, role_col_tab = st.tabs(
+                [
+                    "Admin",
+                    "Polling Unit",
+                    "Collation Officer",
+                ]
+            )
+            with role_admin_tab:
+                st.info("Stage 1 Portal Gate Passed. Proceed to standard Admin credentials.")
+                if st.button(
+                    "Proceed to Admin Login Checkpoint",
+                    key="home_tab_go_admin",
+                    width="stretch",
+                ):
+                    st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
+                    st.rerun()
 
-    with tab_admin:
-        if _require_portal_access_layer("Admin Login Hub", "home_tab_admin"):
-            st.info("Stage 1 Portal Gate Passed. Proceed to standard Admin credentials.")
-            if st.button(
-                "Proceed to Admin Login Checkpoint",
-                key="home_tab_go_admin",
-                width="stretch",
-            ):
-                st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
-                st.rerun()
+            with role_pu_tab:
+                st.info("Stage 1 Portal Gate Passed. Proceed to Polling Unit Agent credentials.")
+                if st.button(
+                    "Proceed to Polling Unit Agent Login",
+                    key="home_tab_go_pu",
+                    width="stretch",
+                ):
+                    st.session_state.current_route = "DIRECT_AGENT_GATE"
+                    st.rerun()
 
-    with tab_pu:
-        if _require_portal_access_layer("Polling Unit Agent Hub", "home_tab_pu"):
-            st.info("Stage 1 Portal Gate Passed. Proceed to Polling Unit Agent credentials.")
-            if st.button(
-                "Proceed to Polling Unit Agent Login",
-                key="home_tab_go_pu",
-                width="stretch",
-            ):
-                st.session_state.current_route = "DIRECT_AGENT_GATE"
-                st.rerun()
-
-    with tab_col:
-        if _require_portal_access_layer("Collation Officer Hub", "home_tab_col"):
-            st.info("Stage 1 Portal Gate Passed. Proceed to Collation Officer credentials.")
-            if st.button(
-                "Proceed to Collation Officer Login",
-                key="home_tab_go_col",
-                width="stretch",
-            ):
-                st.session_state.current_route = "DIRECT_COLLATION_GATE"
-                st.rerun()
+            with role_col_tab:
+                st.info("Stage 1 Portal Gate Passed. Proceed to Collation Officer credentials.")
+                if st.button(
+                    "Proceed to Collation Officer Login",
+                    key="home_tab_go_col",
+                    width="stretch",
+                ):
+                    st.session_state.current_route = "DIRECT_COLLATION_GATE"
+                    st.rerun()
 
 # ==============================================================================
 # VIEW 2: UNIFIED CONTROL ROOM ACCESS CHECKPOINT
