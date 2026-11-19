@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - SECURE ROUTER MATRICES
 # Project: Balanga/Billiri Federal Constituency (Honourable Ali Isa JC, PhD)
 # File: main.py (V95.0 - Bulletproof Self-Healing Architecture)
@@ -629,11 +629,11 @@ else:
                     st.success("The announcement was saved and published.")
                     st.rerun()
 
-    elif exec_target == "Live Election Analytical Sync":
+    elif "Live Election Analytical Sync" in str(exec_target):
         panels.render_election_analytical_sync()
 
     # --- 🔒 MODULE 9: EXCLUSIVE GROUND TRUTH LITIGATION MODULE ---
-    elif exec_target == "Ground Truth Form EC8A Data":
+    elif "Ground Truth Form EC8A Data" in str(exec_target):
         panels.render_admin_submissions(["ward_collation", "polling_unit_tally"])
 
     # --- 📋 MODULE 14: STRATEGIC COMMITTEE PROGRESS INTAKE ---
@@ -674,3 +674,4 @@ else:
 
 
 # --- RESTORED RECRUITMENT & EMPOWERMENT MODULE ---
+

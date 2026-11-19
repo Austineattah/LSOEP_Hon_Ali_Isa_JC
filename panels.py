@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import datetime
 import time
@@ -952,8 +952,8 @@ def ward_collation_officer_panel():
             st.markdown("**Votes Scored by Party**")
             apc_votes = st.number_input("APC Votes", min_value=0)
             pdp_votes = st.number_input("PDP Votes", min_value=0)
-            lp_votes = st.number_input("LP Votes", min_value=0)
-            nnpp_votes = st.number_input("NNPP Votes", min_value=0)
+            ndc_votes = st.number_input("NDC Votes", min_value=0)
+            adc_votes = st.number_input("ADC Votes", min_value=0)
 
             incident_occurred = st.selectbox("Incident Occurred?", ["No", "Yes"])
             incident_details = ""
@@ -976,7 +976,7 @@ def ward_collation_officer_panel():
                 )
             elif not _valid_phone(sup_phone):
                 st.error("Enter a valid contact phone number.")
-            elif apc_votes + pdp_votes + lp_votes + nnpp_votes > accredited_voters:
+            elif apc_votes + pdp_votes + ndc_votes + adc_votes > accredited_voters:
                 st.error("The party vote total cannot exceed accredited voters.")
             elif not collation_evidence:
                 st.error(
@@ -990,8 +990,8 @@ def ward_collation_officer_panel():
                     "Ward": final_ward,
                     "APC_Votes": apc_votes,
                     "PDP_Votes": pdp_votes,
-                    "LP_Votes": lp_votes,
-                    "NNPP_Votes": nnpp_votes,
+                    "NDC_Votes": ndc_votes,
+                    "ADC_Votes": adc_votes,
                     "BVAS_Serial_Number": bvas_serial,
                     "Accredited_Voters": accredited_voters,
                     "Incident_Occurred": incident_occurred,
@@ -1020,8 +1020,8 @@ def ward_collation_officer_panel():
                 <div class="slip-row"><span>BVAS S/N:</span> <span>{safe_data['BVAS_Serial_Number']}</span></div>
                 <div class="slip-row" style="color:blue;"><span>APC:</span> <span>{safe_data['APC_Votes']}</span></div>
                 <div class="slip-row" style="color:green;"><span>PDP:</span> <span>{safe_data['PDP_Votes']}</span></div>
-                <div class="slip-row" style="color:red;"><span>LP:</span> <span>{safe_data['LP_Votes']}</span></div>
-                <div class="slip-row" style="color:orange;"><span>NNPP:</span> <span>{safe_data['NNPP_Votes']}</span></div>
+                <div class="slip-row" style="color:red;"><span>NDC:</span> <span>{safe_data.get('NDC_Votes', safe_data.get('LP_Votes', 0))}</span></div>
+                <div class="slip-row" style="color:orange;"><span>ADC:</span> <span>{safe_data.get('ADC_Votes', safe_data.get('NNPP_Votes', 0))}</span></div>
             </div>""",
             unsafe_allow_html=True,
         )
@@ -1152,12 +1152,12 @@ def agent_panel():
                 "PDP Score Tally:", min_value=0, value=0, key="v_pdp_in"
             )
         with col_p3:
-            v_lp = st.number_input(
-                "LP Score Tally:", min_value=0, value=0, key="v_lp_in"
+            v_ndc = st.number_input(
+                "NDC Score Tally:", min_value=0, value=0, key="v_ndc_in"
             )
         with col_p4:
-            v_nnpp = st.number_input(
-                "NNPP Score Tally:", min_value=0, value=0, key="v_nnpp_in"
+            v_adc = st.number_input(
+                "ADC Score Tally:", min_value=0, value=0, key="v_adc_in"
             )
 
         pu_description = st.text_area(
@@ -1177,7 +1177,7 @@ def agent_panel():
             width="stretch",
         ):
             final_ward = manual_pu_ward.strip() if manual_pu_ward.strip() else pu_ward
-            calculated_sum = v_apc + v_pdp + v_lp + v_nnpp
+            calculated_sum = v_apc + v_pdp + v_ndc + v_adc
 
             if not (
                 pu_officer and pu_phone and final_ward and pu_bvas_id and pu_description
@@ -1210,8 +1210,8 @@ def agent_panel():
                         "party_votes": {
                             "APC": v_apc,
                             "PDP": v_pdp,
-                            "LP": v_lp,
-                            "NNPP": v_nnpp,
+                            "NDC": v_ndc,
+                            "ADC": v_adc,
                         },
                         "total_votes": calculated_sum,
                         "description": pu_description.strip(),
@@ -1722,9 +1722,9 @@ def render_election_analytical_sync():
     if not require_role("admin"):
         return
 
-    st.markdown("### 📊 LIVE ELECTION ANALYTICAL SYNC DISPLAY")
+    st.markdown("### \U0001F4CA LIVE ELECTION ANALYTICAL SYNC DISPLAY")
     try:
-        records = list_submissions(["polling_unit_tally"])
+        records = list_submissions(["polling_unit_tally", "ward_collation"])
     except PersistenceError as exc:
         st.error(str(exc))
         return
@@ -1732,27 +1732,74 @@ def render_election_analytical_sync():
     if records is None:
         return
     if not records:
-        st.info("No polling-unit tallies have been recorded.")
+        st.info("No polling-unit or ward collation tallies have been recorded yet.")
         return
 
     rows = []
-    for record in records:
-        payload = record["payload"]
+    tot_apc = tot_pdp = tot_ndc = tot_adc = 0
+    for r in records:
+        pl = r.get("payload", {})
+        rt = r.get("submission_type", "polling_unit_tally")
+        if rt == "ward_collation" or "APC_Votes" in pl:
+            apc = int(pl.get("APC_Votes", 0) or 0)
+            pdp = int(pl.get("PDP_Votes", 0) or 0)
+            ndc = int(pl.get("NDC_Votes", 0) or 0)
+            adc = int(pl.get("ADC_Votes", 0) or 0)
+            acc = int(pl.get("Accredited_Voters", 0) or 0)
+            lga = pl.get("LGA")
+            ward = pl.get("Ward")
+            bvas = pl.get("BVAS_Serial_Number")
+            off = pl.get("Supervisor")
+            tier = "Ward Collation (EC8A)"
+        else:
+            pv = pl.get("party_votes", {})
+            apc = int(pv.get("APC", 0) or 0)
+            pdp = int(pv.get("PDP", 0) or 0)
+            ndc = int(pv.get("NDC", 0) or 0)
+            adc = int(pv.get("ADC", 0) or 0)
+            acc = int(pl.get("accredited_voters", 0) or 0)
+            lga = pl.get("lga")
+            ward = pl.get("ward")
+            bvas = pl.get("bvas_serial")
+            off = pl.get("officer_name")
+            tier = pl.get("election_tier", "Polling Unit Tally")
+
+        tot_apc += apc
+        tot_pdp += pdp
+        tot_ndc += ndc
+        tot_adc += adc
         rows.append(
             {
-                "Created At": record["created_at"],
-                "LGA": payload.get("lga"),
-                "Ward": payload.get("ward"),
-                "Election Tier": payload.get("election_tier"),
-                "Accredited Voters": payload.get("accredited_voters"),
-                "Total Votes": payload.get("total_votes"),
-                **payload.get("party_votes", {}),
+                "Timestamp": r.get("created_at"),
+                "Source Feed": tier,
+                "LGA": lga,
+                "Ward": ward,
+                "BVAS S/N": bvas,
+                "Officer": off,
+                "Accredited": acc,
+                "APC": apc,
+                "PDP": pdp,
+                "NDC": ndc,
+                "ADC": adc,
+                "Total Valid": apc + pdp + ndc + adc,
             }
         )
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Total Reports", f"{len(rows):,}")
+    c2.metric("APC Total", f"{tot_apc:,}")
+    c3.metric("PDP Total", f"{tot_pdp:,}")
+    c4.metric("NDC Total", f"{tot_ndc:,}")
+    c5.metric("ADC Total", f"{tot_adc:,}")
+
+    chart_df = pd.DataFrame(
+        {"Party": ["APC", "PDP", "NDC", "ADC"], "Votes": [tot_apc, tot_pdp, tot_ndc, tot_adc]}
+    ).set_index("Party")
+    st.bar_chart(chart_df)
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-    
+
     st.markdown("---")
-    st.markdown("### 🗳️ ELECTION WAR ROOM (SECURE ADMIN ONLY)")
+    st.markdown("### \U0001F5F3\uFE0F ELECTION WAR ROOM (SECURE ADMIN ONLY)")
     render_election_war_room()
 
 
@@ -1982,7 +2029,8 @@ def render_constituency_voting_panel():
     candidates = [
         {"id": "cand_01", "name": "Rt. Hon. Ali Isa JC PhD", "party": "PDP"},
         {"id": "cand_02", "name": "Hon. Candidate B", "party": "APC"},
-        {"id": "cand_03", "name": "Hon. Candidate C", "party": "NNPP"},
+        {"id": "cand_03", "name": "Hon. Candidate C", "party": "ADC"},
     ]
 
     render_secure_voting_grid(candidates=candidates, show_live_results=True)
+
