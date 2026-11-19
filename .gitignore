@@ -12,3 +12,5 @@ refactor_ui.py
 env/
 __pycache__/
 *.pyc
+
+backups/
