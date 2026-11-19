@@ -293,3 +293,86 @@ def _list_submissions_cached(url, key, submission_types, limit):
     if not isinstance(result, list):
         raise PersistenceError("Supabase returned an invalid submissions response.")
     return result
+
+
+def _is_mock_row(row, marker_prefix="MOCK-"):
+    if not isinstance(row, Mapping):
+        return False
+    payload = row.get("payload")
+    if not isinstance(payload, Mapping):
+        return False
+    if payload.get("is_mock") is True:
+        return True
+    prefix = str(marker_prefix or "MOCK-").strip().lower()
+    if not prefix:
+        return False
+    for val in payload.values():
+        if isinstance(val, str) and val.strip().lower().startswith(prefix):
+            return True
+    return False
+
+
+def _extract_evidence_paths(payload):
+    if not isinstance(payload, Mapping):
+        return []
+    raw_paths = payload.get("evidence_paths")
+    paths = []
+    if isinstance(raw_paths, Mapping):
+        for p in raw_paths.values():
+            if isinstance(p, str) and p.strip():
+                paths.append(p.strip())
+    elif isinstance(raw_paths, (list, tuple)):
+        for p in raw_paths:
+            if isinstance(p, str) and p.strip():
+                paths.append(p.strip())
+    return paths
+
+
+def find_mock_submissions(marker_prefix="MOCK-", limit=1000):
+    rows = list_submissions(submission_types=None, limit=limit)
+    if rows is None:
+        return []
+    return [row for row in rows if _is_mock_row(row, marker_prefix=marker_prefix)]
+
+
+def purge_mock_submissions(submission_ids, marker_prefix="MOCK-"):
+    target_ids = {str(x).strip() for x in (submission_ids or []) if str(x).strip()}
+    summary = {
+        "deleted_ids": [],
+        "deleted_evidence_count": 0,
+        "errors": [],
+    }
+    if not target_ids:
+        return summary
+
+    url, key = _supabase_config()
+    candidates = find_mock_submissions(marker_prefix=marker_prefix, limit=1000)
+    matched_rows = [r for r in candidates if str(r.get("id", "")).strip() in target_ids]
+
+    for row in matched_rows:
+        row_id = str(row.get("id", "")).strip()
+        payload = row.get("payload") if isinstance(row.get("payload"), Mapping) else {}
+        evidence_paths = _extract_evidence_paths(payload)
+
+        for ev_path in evidence_paths:
+            try:
+                _delete_evidence(url, key, ev_path)
+                summary["deleted_evidence_count"] += 1
+            except PersistenceError as exc:
+                summary["errors"].append(f"Row {row_id} evidence ({ev_path}): {exc}")
+
+        del_endpoint = f"{url}/rest/v1/portal_submissions"
+        try:
+            resp = requests.delete(
+                del_endpoint,
+                headers={**_headers(key), "Prefer": "return=representation"},
+                params={"id": f"eq.{row_id}"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            summary["deleted_ids"].append(row_id)
+        except requests.RequestException as exc:
+            summary["errors"].append(f"Row {row_id} delete failed: {exc}")
+
+    st.cache_data.clear()
+    return summary

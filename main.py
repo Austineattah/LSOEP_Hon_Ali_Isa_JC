@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # 🏛️ LSOEP PORTAL PLATFORM ENGINE - SECURE ROUTER MATRICES
 # Project: Balanga/Billiri Federal Constituency (Honourable Ali Isa JC, PhD)
 # File: main.py (V95.0 - Bulletproof Self-Healing Architecture)
@@ -6,6 +6,7 @@
 
 import sys
 import os
+import hmac
 import io
 import asyncio
 import threading
@@ -19,6 +20,8 @@ from persistence import PersistenceError, list_submissions, submit_submission
 # --- 1. SEPARATED ROLE-BASED STATE INITIALIZATION ENGINE ---
 if "current_route" not in st.session_state:
     st.session_state.current_route = "HOME"
+if "portal_layer_unlocked" not in st.session_state:
+    st.session_state.portal_layer_unlocked = False
 
 if sys.platform == "win32":
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -46,7 +49,7 @@ st.set_page_config(
     page_title="LSOEP - Balanga/Billiri Federal Constituency",
     page_icon=":material/account_balance:",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- ENTERPRISE UI BRANDING & SECURITY SANITIZATION ---
@@ -59,6 +62,8 @@ hide_streamlit_style = """
     div[data-testid="stToolbar"] {visibility: hidden; display: none !important;}
     div[data-testid="stDecoration"] {visibility: hidden; display: none !important;}
     div[data-testid="stStatusWidget"] {visibility: hidden; display: none !important;}
+    section[data-testid="stSidebar"],
+    [data-testid="stSidebarCollapsedControl"] {visibility: hidden !important; display: none !important;}
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -137,41 +142,42 @@ if "announcement_loaded" not in st.session_state and not is_restricted_route:
         )
     st.session_state.announcement_loaded = True
 
-# --- 4. SIDEBAR ACCESS CONTROL PORTALS ---
-st.sidebar.markdown(
-    f"""<a href="#" target="_blank" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a>""",
-    unsafe_allow_html=True,
-)
-st.sidebar.markdown("<hr>", unsafe_allow_html=True)
-st.sidebar.markdown(
-    "<h3 class='admin-header'>System Access Portals</h3>", unsafe_allow_html=True
-)
 
-if st.sidebar.button(
-    "🔑 EXECUTIVE CONTROL ROOM & HUBS", width="stretch", key="side_btn_admin_main"
-):
-    st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
-    st.rerun()
+PORTAL_GATE_PASSCODE = os.getenv("PORTAL_GATE_PASSCODE", "aliisa2027")
 
-if st.sidebar.button(
-    "🗳️ POLLING UNIT AGENT PORTAL", width="stretch", key="side_btn_agent_direct"
-):
-    st.session_state.current_route = "DIRECT_AGENT_GATE"
-    st.rerun()
 
-if st.sidebar.button(
-    "🛡️ WARD COLLATION OFFICER HUB", width="stretch", key="side_btn_collation_direct"
-):
-    st.session_state.current_route = "DIRECT_COLLATION_GATE"
-    st.rerun()
-
-st.sidebar.caption("Engine Architecture: v95.0 | Safe-Guard Core Build")
-if is_logged_in():
-    st.sidebar.caption(f"Signed in as {st.user.get('email', 'user')}")
-    if st.sidebar.button("Sign out", key="oidc_logout"):
+def _render_back_to_home_bar(key_suffix: str) -> None:
+    if st.button(
+        "← Back to Constituency Channel",
+        key=f"mobile_back_home_{key_suffix}",
+        width="stretch",
+    ):
         st.session_state.current_route = "HOME"
-        clear_passcode_access()
-        st.logout()
+        st.rerun()
+
+
+def _require_portal_access_layer(hub_label: str, key_prefix: str) -> bool:
+    if st.session_state.get("portal_layer_unlocked", False):
+        return True
+    st.warning(
+        f"{hub_label} - Stage 1 Security Gate: Enter the portal access passcode to unlock this tab and proceed to role credentials."
+    )
+    with st.form(key=f"portal_gate_form_{key_prefix}"):
+        entered_code = st.text_input(
+            "Portal Access Passcode",
+            type="password",
+            key=f"portal_gate_input_{key_prefix}",
+        )
+        submitted = st.form_submit_button("Unlock Hub Access", width="stretch")
+    if submitted:
+        if hmac.compare_digest(entered_code.strip(), PORTAL_GATE_PASSCODE):
+            st.session_state.portal_layer_unlocked = True
+            st.success("Portal access layer unlocked. Loading role checkpoint...")
+            st.rerun()
+        else:
+            st.error("Invalid portal access passcode.")
+    return False
+
 
 # --- 5. GLOBAL MAIN VIEWPORT MATRIX ---
 selected_route = st.session_state.current_route
@@ -219,27 +225,87 @@ if selected_route == "HOME":
             st.session_state.current_route = option
             st.rerun()
 
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown(
+        "<h3 class='nav-title' style='color: #D4AF37 !important;'>RESTRICTED OPERATIONAL & ELECTION COMMAND TABS</h3>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<div style="margin-bottom: 14px;"><a href="#" target="_blank" class="inst-link-box">🌐 {HON_TITLE} Official Facebook</a></div>',
+        unsafe_allow_html=True,
+    )
+    if is_logged_in():
+        st.caption(f"Signed in as {st.user.get('email', 'user')}")
+        if st.button("Sign out", key="main_oidc_logout"):
+            st.session_state.current_route = "HOME"
+            st.session_state.portal_layer_unlocked = False
+            clear_passcode_access()
+            st.logout()
+    tab_admin, tab_pu, tab_col = st.tabs(
+        [
+            "Admin Login Hub",
+            "Polling Unit Agent Hub",
+            "Collation Officer Hub",
+        ]
+    )
+
+    with tab_admin:
+        if _require_portal_access_layer("Admin Login Hub", "home_tab_admin"):
+            st.info("Stage 1 Portal Gate Passed. Proceed to standard Admin credentials.")
+            if st.button(
+                "Proceed to Admin Login Checkpoint",
+                key="home_tab_go_admin",
+                width="stretch",
+            ):
+                st.session_state.current_route = "ADMIN_GATEWAY_CHECKPOINT"
+                st.rerun()
+
+    with tab_pu:
+        if _require_portal_access_layer("Polling Unit Agent Hub", "home_tab_pu"):
+            st.info("Stage 1 Portal Gate Passed. Proceed to Polling Unit Agent credentials.")
+            if st.button(
+                "Proceed to Polling Unit Agent Login",
+                key="home_tab_go_pu",
+                width="stretch",
+            ):
+                st.session_state.current_route = "DIRECT_AGENT_GATE"
+                st.rerun()
+
+    with tab_col:
+        if _require_portal_access_layer("Collation Officer Hub", "home_tab_col"):
+            st.info("Stage 1 Portal Gate Passed. Proceed to Collation Officer credentials.")
+            if st.button(
+                "Proceed to Collation Officer Login",
+                key="home_tab_go_col",
+                width="stretch",
+            ):
+                st.session_state.current_route = "DIRECT_COLLATION_GATE"
+                st.rerun()
+
 # ==============================================================================
 # VIEW 2: UNIFIED CONTROL ROOM ACCESS CHECKPOINT
 # ==============================================================================
 elif selected_route == "ADMIN_GATEWAY_CHECKPOINT":
     render_marquee_header()
+    _render_back_to_home_bar("admin_gate")
     st.markdown("### Executive Control Room")
-    if require_role("admin"):
-        st.session_state.current_route = "ADMIN_HUB_DASHBOARD"
-        st.rerun()
-    if st.button("Return Home", key="gate_admin_cancel"):
-        st.session_state.current_route = "HOME"
-        st.rerun()
+    if _require_portal_access_layer("Admin Control Room", "route_admin_gate"):
+        if require_role("admin"):
+            st.session_state.current_route = "ADMIN_HUB_DASHBOARD"
+            st.rerun()
 
 # ==============================================================================
 # VIEW 3: ADMINISTRATIVE COMMAND HUBS GRAPHICS DASHBOARD
 # ==============================================================================
 elif selected_route == "ADMIN_HUB_DASHBOARD":
+    if not _require_portal_access_layer("Admin Control Room", "route_admin_hub"):
+        _render_back_to_home_bar("admin_hub_locked")
+        st.stop()
     if not require_role("admin"):
         st.stop()
 
     render_marquee_header()
+    _render_back_to_home_bar("admin_hub")
     st.markdown(
         "<h2 class='nav-title' style='color: #D4AF37 !important;'>🏛️ EXECUTIVE ADMINISTRATIVE COMMAND HUBS</h2>",
         unsafe_allow_html=True,
@@ -339,6 +405,7 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
         "↩️ Close Admin Hub and Logout", width="stretch", key="admin_hub_logout_btn"
     ):
         st.session_state.current_route = "HOME"
+        st.session_state.portal_layer_unlocked = False
         clear_passcode_access()
         _logout_if_logged_in()
         st.rerun()
@@ -348,36 +415,40 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
 # ==============================================================================
 elif selected_route == "DIRECT_AGENT_GATE":
     render_marquee_header()
-    st.markdown("### 🔒 Polling Unit Agent Portal Access Checkpoint")
-    if require_role("agent"):
-        st.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
-        st.rerun()
-    if st.button("Return Home", key="gate_agent_cancel"):
-        st.session_state.current_route = "HOME"
-        st.rerun()
+    _render_back_to_home_bar("agent_gate")
+    st.markdown("### Polling Unit Agent Portal Access Checkpoint")
+    if _require_portal_access_layer("Polling Unit Agent Portal", "route_agent_gate"):
+        if require_role("agent"):
+            st.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
+            st.rerun()
 
 # ==============================================================================
 # VIEW 5: STANDALONE ISOLATED FIELD AGENT ENVELOPE
 # ==============================================================================
 elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
+    if not _require_portal_access_layer("Polling Unit Agent Portal", "route_agent_screen"):
+        _render_back_to_home_bar("agent_screen_locked")
+        st.stop()
     if not require_role("agent"):
         st.stop()
 
     render_marquee_header()
+    _render_back_to_home_bar("agent_screen")
     st.markdown(
-        "<h2 style='color: #D4AF37;'>🗳️ POLLING UNIT AGENT: FIELD DATA TRANSFERS</h2>",
+        "<h2 style='color: #D4AF37;'>POLLING UNIT AGENT: FIELD DATA TRANSFERS</h2>",
         unsafe_allow_html=True,
     )
     st.info(
-        "⚡ Ingestion Stream Active: Execute data snaps and camera capture forms cleanly."
+        "Ingestion Stream Active: Execute data snaps and camera capture forms cleanly."
     )
     st.markdown("---")
 
     panels.agent_panel()
 
     st.markdown("---")
-    if st.button("↩️ Securely Terminate Agent Session & Exit", width="stretch"):
+    if st.button("Securely Terminate Agent Session & Exit", width="stretch"):
         st.session_state.current_route = "HOME"
+        st.session_state.portal_layer_unlocked = False
         clear_passcode_access()
         _logout_if_logged_in()
         st.rerun()
@@ -387,22 +458,21 @@ elif selected_route == "STANDALONE_AGENT_INPUT_SCREEN":
 # ==============================================================================
 elif selected_route == "DIRECT_COLLATION_GATE":
     render_marquee_header()
-    st.markdown("### 🛡️ Ward Collation Command Security Checkpoint")
-    if require_role("collation"):
-        st.session_state.current_route = "DIRECT_COLLATION_SCREEN"
-        st.rerun()
-    if st.button("Return Home", key="gate_collation_cancel"):
-        st.session_state.current_route = "HOME"
-        st.rerun()
+    _render_back_to_home_bar("collation_gate")
+    st.markdown("### Ward Collation Command Security Checkpoint")
+    if _require_portal_access_layer("Ward Collation Officer Hub", "route_collation_gate"):
+        if require_role("collation"):
+            st.session_state.current_route = "DIRECT_COLLATION_SCREEN"
+            st.rerun()
 
 elif selected_route == "DIRECT_COLLATION_SCREEN":
+    if not _require_portal_access_layer("Ward Collation Officer Hub", "route_collation_screen"):
+        _render_back_to_home_bar("collation_screen_locked")
+        st.stop()
     if not require_role("collation"):
         st.stop()
     render_marquee_header()
-    if st.button("Return Home", key="collation_return_home"):
-        st.session_state.current_route = "HOME"
-        clear_passcode_access()
-        st.rerun()
+    _render_back_to_home_bar("collation_screen")
     panels.ward_collation_officer_panel()
 
 # ==============================================================================
@@ -600,7 +670,7 @@ else:
         panels.render_constituency_voting_panel()
     
     elif selected_route == "Jobs Vacancy & Federal Grants":
-        is_admin = st.sidebar.toggle("Admin vetting", key="recruitment_admin_mode")
+        is_admin = st.toggle("Admin vetting", key="recruitment_admin_mode")
         render_recruitment_panel(is_admin_mode=is_admin)
 
     # --- 📢 MODULE 3: ADMIN ANNOUNCEMENT CONTROL ---

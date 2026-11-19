@@ -1,7 +1,8 @@
-﻿import streamlit as st
+import streamlit as st
 import pandas as pd
 import datetime
 import time
+import hmac
 import os
 import html
 import re
@@ -9,7 +10,13 @@ import textwrap
 
 from auth import has_committee_access, is_logged_in, render_login_prompt, require_role
 from panels.election_war_room import render_election_war_room
-from persistence import PersistenceError, list_submissions, submit_submission
+from persistence import (
+    PersistenceError,
+    find_mock_submissions,
+    list_submissions,
+    purge_mock_submissions,
+    submit_submission,
+)
 from registry import (
     LGA_WARD_DATA,
     STRATEGIC_COMMITTEE_NAMES,
@@ -1239,6 +1246,7 @@ def main_dashboard(conn):
     admin_modules = [
         "📊 Master Registry Matrix",
         "🗣️ Citizen Feedback",
+        "Mock Data Purge",
         "📢 Admin Announcement Control",
         "⚖️ Database Audit Diagnostics",
         "🛡️ RADAR Deduplication Interceptor",
@@ -1292,6 +1300,116 @@ def main_dashboard(conn):
     elif selected_module == "🗣️ Citizen Feedback":
         st.subheader("🗣️ Citizen Feedback Messages")
         _render_saved_submissions(["speak_direct", "community_urgent_need"])
+def _get_mock_purge_passcode():
+    try:
+        sec_code = st.secrets.get("mock_purge_passcode")
+        if isinstance(sec_code, str) and sec_code.strip():
+            return sec_code.strip()
+    except Exception:
+        pass
+    env_code = os.getenv("MOCK_PURGE_PASSCODE", "")
+    if env_code.strip():
+        return env_code.strip()
+    return "aliisa2027"
+
+
+def render_admin_mock_purge_control():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### Mock Data Dry-Run & Scoped Purge")
+    st.caption(
+        "Matches ONLY rows explicitly tagged as mock/drill records (is_mock=True or a configured prefix such as MOCK- / DRILL-) and cleans up linked private-evidence files."
+    )
+
+    marker_prefix = st.text_input(
+        "Mock Payload Prefix Filter",
+        value="MOCK-",
+        key="admin_mock_purge_prefix",
+    ).strip()
+
+    try:
+        mock_rows = find_mock_submissions(marker_prefix=marker_prefix or "MOCK-", limit=1000)
+    except PersistenceError as exc:
+        st.error(f"Could not scan mock submissions: {exc}")
+        return
+
+    st.metric("Matched Mock Submissions (Dry-Run)", len(mock_rows))
+
+    if not mock_rows:
+        st.info("No mock submissions match the active filter. Nothing to purge.")
+        return
+
+    preview_rows = []
+    for r in mock_rows:
+        pl = r.get("payload") if isinstance(r.get("payload"), dict) else {}
+        ev = pl.get("evidence_paths")
+        ev_count = len(ev) if isinstance(ev, (dict, list)) else 0
+        summary_str = ", ".join(
+            f"{k}={v}" for k, v in list(pl.items())[:4] if k != "evidence_paths"
+        )
+        preview_rows.append(
+            {
+                "ID": r.get("id"),
+                "Type": r.get("submission_type"),
+                "Created": r.get("created_at"),
+                "Evidence Files": ev_count,
+                "Payload Preview": summary_str[:120],
+            }
+        )
+
+    st.dataframe(preview_rows, width="stretch")
+
+    st.warning(
+        "Double-guarded action: Enter the purge passcode, confirm you exported a backup snapshot, and type PURGE MOCK DATA to execute."
+    )
+    entered_purge_code = st.text_input(
+        "Purge Authorization Passcode",
+        type="password",
+        key="admin_mock_purge_passcode",
+    )
+    backup_confirmed = st.checkbox(
+        "I confirm a pre-purge backup snapshot has been exported.",
+        key="admin_mock_purge_backup_chk",
+    )
+    typed_phrase = st.text_input(
+        "Type PURGE MOCK DATA to confirm",
+        key="admin_mock_purge_phrase",
+    )
+
+    guards_ok = (
+        bool(entered_purge_code)
+        and hmac.compare_digest(entered_purge_code.strip(), _get_mock_purge_passcode())
+        and backup_confirmed
+        and typed_phrase.strip() == "PURGE MOCK DATA"
+    )
+
+    if st.button(
+        "Execute Scoped Mock Purge",
+        key="admin_mock_purge_exec_btn",
+        disabled=not guards_ok,
+        width="stretch",
+    ):
+        ids_to_delete = [r.get("id") for r in mock_rows if r.get("id") is not None]
+        try:
+            result = purge_mock_submissions(
+                ids_to_delete, marker_prefix=marker_prefix or "MOCK-"
+            )
+        except PersistenceError as exc:
+            st.error(f"Purge failed: {exc}")
+            return
+
+        st.success(
+            f"Purged {len(result['deleted_ids'])} mock rows and {result['deleted_evidence_count']} evidence files."
+        )
+        if result["errors"]:
+            for err in result["errors"]:
+                st.error(err)
+        st.rerun()
+
+
+    elif selected_module == "Mock Data Purge":
+        render_admin_mock_purge_control()
     elif selected_module == "📢 Admin Announcement Control":
         render_admin_announcement_control()
     elif selected_module == "📝 Ground Truth Form EC8A Data":
