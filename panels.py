@@ -2136,6 +2136,9 @@ def render_vouching_verification_panel():
 
 def render_constituency_voting_panel():
     """Renders the SQLite-backed constituency voting portal inside the LSOEP layout."""
+    if not require_role("admin"):
+        return
+
     from voting_component import render_secure_voting_grid
 
     st.markdown(

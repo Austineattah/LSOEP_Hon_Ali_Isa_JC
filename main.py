@@ -86,7 +86,6 @@ NAVIGATION_OPTIONS = [
     "💡 CV & ARTISAN VAULT",
     "🚨 COMMUNITY URGENT NEED",
     "📜 CONSTITUENCY VOUCHING VERIFICATION",
-    "🗳️ SECURE CONSTITUENCY VOTING",
 ]
 
 # 🏛️ EXACT STRUCTURAL MATRIX TO MATCH INTERNAL PANELS.PY CALL STRINGS
@@ -98,7 +97,7 @@ ADMIN_COMMAND_HUBS = [
     "🛡️ RADAR Deduplication Interceptor",
     "🎓 Scholar Talent Matrix",
     "💎 Vantedge Influencer Proportions",
-    "🗳️ Live Election Analytical Sync",
+    "🗳️ Secure Constituency Voting",
     "📝 Ground Truth Form EC8A Data",
     "📂 Bulk Data Sync Stream",
     "📜 Executive Waiver Ledger",
@@ -682,8 +681,6 @@ else:
         panels.render_cv_vault()
     elif selected_route == "🚨 COMMUNITY URGENT NEED":
         panels.render_cun_trigger()
-    elif selected_route == "🗳️ SECURE CONSTITUENCY VOTING":
-        panels.render_constituency_voting_panel()
     
     elif selected_route == "Jobs Vacancy & Federal Grants":
         is_admin = st.toggle("Admin vetting", key="recruitment_admin_mode")
@@ -751,6 +748,24 @@ else:
         panels.render_admin_submissions(
             ["skill_application", "scholarship_application", "cv_application"]
         )
+    elif "Secure Constituency Voting" in str(exec_target):
+        panels.render_constituency_voting_panel()
+    elif "Vantedge Influencer Proportions" in str(exec_target):
+        st.markdown("### 💎 Vantedge Influencer Proportions & Outreach Distribution")
+        st.caption("Administrative review of constituency outreach & committee stakeholder records.")
+        panels.render_admin_submissions(["speak_direct", "committee_member"])
+    elif "Bulk Data Sync Stream" in str(exec_target):
+        st.markdown("### 📂 Bulk Data Sync Stream")
+        st.caption("Full administrative record stream and export console.")
+        panels.render_admin_submissions()
+    elif "Executive Waiver Ledger" in str(exec_target):
+        st.markdown("### 📜 Executive Waiver Ledger")
+        st.caption("Administrative inspection of vouching and urgent-need exception records.")
+        panels.render_admin_submissions(["palliative_vouching", "community_urgent_need"])
+    elif "Long-Term Momentum Monitoring" in str(exec_target):
+        st.markdown("### 📅 Long-Term Momentum Monitoring")
+        st.caption("Sustained legislative progress and multi-program tracking.")
+        panels.render_progress_tracker()
     elif exec_target == "Legislative Progress Tracker":
         panels.render_progress_tracker()
     else:
