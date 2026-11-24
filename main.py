@@ -46,7 +46,7 @@ def _logout_if_logged_in():
 
 # --- 2. PREMIUM VISUAL CANVAS PLATFORM SETUP ---
 st.set_page_config(
-    page_title="LSOEP - Balanga/Billiri Federal Constituency",
+    page_title="ALI JC CONNECT 2027 - Balanga/Billiri Federal Constituency",
     page_icon=":material/account_balance:",
     layout="wide",
     initial_sidebar_state="collapsed",
