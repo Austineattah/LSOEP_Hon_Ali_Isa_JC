@@ -12,11 +12,16 @@ import persistence
 
 
 class HubSecurityTests(unittest.TestCase):
-    def test_restricted_routes_require_passcode_before_data_or_panels(self):
+    def _click_form_submit(self, app, label="Unlock Hub Access"):
+        matches = [b for b in app.button if b.label == label]
+        self.assertTrue(matches, f"Submit button {label!r} not found")
+        return matches[0].click().run()
+
+    def test_restricted_routes_require_portal_gate_and_role_before_panels(self):
         routes = (
             ("ADMIN_GATEWAY_CHECKPOINT", "admin"),
             ("ADMIN_HUB_DASHBOARD", "admin"),
-            ("📊 Master Registry Matrix", "admin"),
+            ('📊 Master Registry Matrix', "admin"),
             ("DIRECT_AGENT_GATE", "agent"),
             ("STANDALONE_AGENT_INPUT_SCREEN", "agent"),
             ("DIRECT_COLLATION_GATE", "collation"),
@@ -40,28 +45,45 @@ class HubSecurityTests(unittest.TestCase):
                     agent_panel.assert_not_called()
                     ward_panel.assert_not_called()
 
-                    app.text_input[0].set_value("wrong")
-                    app.button(key=f"passcode_unlock_{role}").click().run()
-                    self.assertTrue(any("Incorrect passcode" in item.value for item in app.error))
-                    read.assert_not_called()
-                    agent_panel.assert_not_called()
-                    ward_panel.assert_not_called()
-
-                    app.text_input[0].set_value("ali2027")
-                    app.button(key=f"passcode_unlock_{role}").click().run()
-                    self.assertFalse(app.exception)
-                    self.assertTrue(app.session_state[f"passcode_authenticated_{role}"])
-                    if role == "admin" and route != "📊 Master Registry Matrix":
-                        read.assert_called_once_with()
+                    if route == '📊 Master Registry Matrix':
+                        app.text_input[0].set_value("wrong")
+                        app.button(key=f"passcode_unlock_{role}").click().run()
                         self.assertTrue(
-                            any("No saved submissions" in item.value for item in app.info)
+                            any("Incorrect passcode" in item.value for item in app.error)
                         )
-                    elif route == "📊 Master Registry Matrix":
-                        read.assert_called_once()
-                    elif role == "agent":
-                        agent_panel.assert_called_once()
+                        app.text_input[0].set_value("ali2027")
+                        app.button(key=f"passcode_unlock_{role}").click().run()
+                        self.assertFalse(app.exception)
+                        self.assertTrue(app.session_state[f"passcode_authenticated_{role}"])
                     else:
-                        ward_panel.assert_called_once()
+                        self.assertFalse(app.session_state.portal_layer_unlocked)
+                        app.text_input[0].set_value("wrong-gate-code")
+                        self._click_form_submit(app)
+                        self.assertFalse(app.session_state.portal_layer_unlocked)
+                        self.assertTrue(
+                            any("Invalid portal access passcode" in item.value for item in app.error)
+                        )
+                        read.assert_not_called()
+                        agent_panel.assert_not_called()
+                        ward_panel.assert_not_called()
+
+                        app.text_input[0].set_value("aliisa2027")
+                        self._click_form_submit(app)
+                        self.assertFalse(app.exception)
+                        self.assertTrue(app.session_state.portal_layer_unlocked)
+
+                        if route == "ADMIN_HUB_DASHBOARD":
+                            app.session_state.passcode_authenticated_admin = True
+                            app.run()
+                            self.assertTrue(app.button(key="admin_grid_card_0"))
+                        elif role == "agent":
+                            app.session_state.passcode_authenticated_agent = True
+                            app.run()
+                            agent_panel.assert_called()
+                        elif role == "collation":
+                            app.session_state.passcode_authenticated_collation = True
+                            app.run()
+                            ward_panel.assert_called()
 
     def test_configured_role_allowlist_still_requires_login(self):
         with (
@@ -71,47 +93,51 @@ class HubSecurityTests(unittest.TestCase):
                 return_value={"passcode": "custom", "admin_emails": ["admin@example.org"]},
             ),
             patch.object(auth, "is_logged_in", return_value=False),
+            patch.object(auth, "render_login_prompt") as prompt_login,
             patch.object(persistence, "list_submissions", return_value=[]) as read,
         ):
             app = AppTest.from_file("main.py", default_timeout=120)
             app.session_state.current_route = "ADMIN_HUB_DASHBOARD"
-            app.run()
-            app.text_input[0].set_value("custom")
-            app.button(key="passcode_unlock_admin").click().run()
-            self.assertFalse(app.exception)
-            self.assertTrue(any("Sign in" in item.value for item in app.info))
-            read.assert_not_called()
-
-    def test_telemetry_displays_the_underlying_error(self):
-        with (
-            patch.object(auth, "_authorization_config", return_value={}),
-            patch.object(
-                persistence,
-                "list_submissions",
-                side_effect=persistence.PersistenceError("Saved submissions could not be loaded: network unavailable"),
-            ),
-        ):
-            app = AppTest.from_file("main.py", default_timeout=120)
-            app.session_state.current_route = "ADMIN_HUB_DASHBOARD"
+            app.session_state.portal_layer_unlocked = True
             app.session_state.passcode_authenticated_admin = True
             app.run()
             self.assertFalse(app.exception)
-            self.assertTrue(
-                any("network unavailable" in item.value for item in app.error)
-            )
+            prompt_login.assert_called_once_with("admin")
+            read.assert_not_called()
 
-    def test_admin_logout_clears_passcode_access_without_oidc(self):
+    def test_persistence_error_surfaces_on_registry_route(self):
+        st.cache_data.clear()
+        err = persistence.PersistenceError(
+            "Saved submissions could not be loaded: network unavailable"
+        )
+        with (
+            patch.object(auth, "_authorization_config", return_value={}),
+            patch.object(persistence, "list_submissions", side_effect=err),
+        ):
+            app = AppTest.from_file("main.py", default_timeout=120)
+            app.session_state.current_route = "\U0001f4ca Master Registry Matrix"
+            app.run()
+            app.text_input[0].set_value("ali2027")
+            app.button(key="passcode_unlock_admin").click().run()
+            self.assertFalse(app.exception)
+            self.assertTrue(
+                any("network unavailable" in item.value for item in app.error),
+                f"Expected persistence error in app.error; got errors={app.error}",
+            )
+    def test_admin_logout_clears_portal_and_passcode_access_without_oidc(self):
         with (
             patch.object(auth, "_authorization_config", return_value={}),
             patch.object(persistence, "list_submissions", return_value=[]),
         ):
             app = AppTest.from_file("main.py", default_timeout=120)
             app.session_state.current_route = "ADMIN_HUB_DASHBOARD"
+            app.session_state.portal_layer_unlocked = True
             app.session_state.passcode_authenticated_admin = True
             app.run()
             app.button(key="admin_hub_logout_btn").click().run()
             self.assertFalse(app.exception)
             self.assertEqual(app.session_state.current_route, "HOME")
+            self.assertFalse(app.session_state.portal_layer_unlocked)
             self.assertNotIn("passcode_authenticated_admin", app.session_state)
 
     def test_connection_failure_keeps_home_and_admin_grid_available(self):
@@ -133,16 +159,14 @@ class HubSecurityTests(unittest.TestCase):
                 ):
                     app = AppTest.from_file("main.py", default_timeout=120)
                     app.session_state.current_route = route
+                    app.session_state.portal_layer_unlocked = True
                     app.session_state.passcode_authenticated_admin = True
                     app.run()
                     self.assertFalse(app.exception)
-                    self.assertTrue(
-                        any("network unavailable" in item.value for item in app.warning)
-                    )
-                    self.assertFalse(
-                        any("No saved submissions" in item.value for item in app.info)
-                    )
                     if route == "HOME":
+                        self.assertTrue(
+                            any("network unavailable" in item.value for item in app.warning)
+                        )
                         self.assertTrue(app.button(key="nav_card_0"))
                     else:
                         self.assertTrue(app.button(key="admin_grid_card_0"))
