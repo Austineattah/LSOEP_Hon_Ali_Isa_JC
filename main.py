@@ -326,91 +326,13 @@ elif selected_route == "ADMIN_HUB_DASHBOARD":
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 📈 Real-Time Operational Telemetry Stream")
-
-    try:
-        saved_records = list_submissions()
-    except PersistenceError as exc:
-        st.error(f"Administrative telemetry is unavailable: {exc}")
-        saved_records = None
-
-    sync_metrics = {}
-    if saved_records is not None:
-        if not saved_records:
-            st.info("No saved submissions are available yet.")
-
-        record_counts = {}
-        for record in saved_records:
-            record_counts[record["submission_type"]] = (
-                record_counts.get(record["submission_type"], 0) + 1
-            )
-        sync_metrics = {
-            "Master Registry Matrix": sum(
-                record_counts.get(kind, 0)
-                for kind in [
-                    "palliative_direct",
-                    "palliative_vouching",
-                    "skill_application",
-                    "scholarship_application",
-                    "cv_application",
-                ]
-            ),
-            "Citizen Feedback": record_counts.get("speak_direct", 0),
-            "Admin Announcement Control": record_counts.get("announcement", 0),
-            "Database Audit Diagnostics": len(saved_records),
-            "Scholar Talent Matrix": record_counts.get("scholarship_application", 0),
-            "Live Election Analytical Sync": record_counts.get("polling_unit_tally", 0),
-            "Ground Truth Form EC8A Data": record_counts.get("ward_collation", 0),
-            "Legislative Progress Tracker": len(HON_ALI_SPONSORED_BILLS),
-            "Strategic Committee Progress Intake (M14)": record_counts.get(
-                "committee_compliance", 0
-            ),
-        }
-
-        chart_df = pd.DataFrame(
-            [
-                {"Module Command Hub": name, "Active Structural Records": count}
-                for name, count in sync_metrics.items()
-            ]
-        )
-
-        v_col1, v_col2 = st.columns(2)
-        with v_col1:
-            st.markdown("#### 📊 Absolute System Transaction Volumes")
-            st.bar_chart(
-                data=chart_df,
-                x="Module Command Hub",
-                y="Active Structural Records",
-                horizontal=True,
-                width="stretch",
-            )
-
-        with v_col2:
-            st.markdown("#### 🧩 Executive Operational Resource Allocation")
-            st.dataframe(
-                chart_df.sort_values(by="Active Structural Records", ascending=False),
-                column_config={
-                    "Module Command Hub": "Administrative Core Segment",
-                    "Active Structural Records": st.column_config.ProgressColumn(
-                        "Saturation Density", format="%d", min_value=0, max_value=1500
-                    ),
-                },
-                hide_index=True,
-                width="stretch",
-            )
-
     st.markdown("---")
     st.markdown("### 🎛️ Command Activation Grid Matrix")
 
     cols = st.columns(4)
     for i, module_title in enumerate(ADMIN_COMMAND_HUBS):
-        metric_key = [
-            k for k in sync_metrics.keys() if module_title in k or k in module_title
-        ]
-        count_suffix = f" ({sync_metrics[metric_key[0]]})" if metric_key else ""
-
         if cols[i % len(cols)].button(
-            f"{module_title}{count_suffix}", key=f"admin_grid_card_{i}", width="stretch"
+            module_title, key=f"admin_grid_card_{i}", width="stretch"
         ):
             st.session_state.current_route = module_title
             st.rerun()
