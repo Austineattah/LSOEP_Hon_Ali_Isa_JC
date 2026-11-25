@@ -194,6 +194,53 @@ def _load_submissions_dataframe(submission_types=None, limit=500):
     return pd.DataFrame(rows)
 
 
+
+def _normalize_lga_key(lga_value):
+    if not lga_value:
+        return ""
+    raw = str(lga_value).strip()
+    if not raw or raw in ("All LGAs", "Select LGA..."):
+        return ""
+    head = raw.upper().split()[0].rstrip(",")
+    if head in ("BALANGA", "BILLIRI"):
+        return head
+    low = raw.lower()
+    if "balanga" in low:
+        return "BALANGA"
+    if "billiri" in low:
+        return "BILLIRI"
+    return raw
+
+
+def _get_wards_for_lga(lga_value):
+    norm = _normalize_lga_key(lga_value)
+    if not norm or not isinstance(LGA_WARD_DATA, dict):
+        return []
+    if norm in LGA_WARD_DATA and isinstance(LGA_WARD_DATA[norm], (list, tuple)):
+        return list(LGA_WARD_DATA[norm])
+    title_key = norm.title()
+    if title_key in LGA_WARD_DATA and isinstance(LGA_WARD_DATA[title_key], (list, tuple)):
+        return list(LGA_WARD_DATA[title_key])
+    for k, v in LGA_WARD_DATA.items():
+        if str(k).strip().upper() == norm and isinstance(v, (list, tuple)):
+            return list(v)
+    return []
+
+
+def _sync_ward_state_for_lga(lga_value, ward_key, valid_options, scope_id):
+    norm_lga = _normalize_lga_key(lga_value)
+    tracker_key = f"_last_lga_for_{scope_id}"
+    prev_lga = st.session_state.get(tracker_key)
+    st.session_state[tracker_key] = norm_lga
+    if ward_key and ward_key in st.session_state:
+        current_ward = st.session_state.get(ward_key)
+        if prev_lga is not None and prev_lga != norm_lga:
+            if current_ward not in valid_options:
+                st.session_state[ward_key] = valid_options[0] if valid_options else None
+        elif current_ward is not None and valid_options and current_ward not in valid_options:
+            st.session_state[ward_key] = valid_options[0]
+
+
 def _render_lga_ward_charts(df, title_prefix, category_col="Channel", key_prefix="batch_a"):
     try:
         import plotly.express as px
@@ -275,31 +322,43 @@ def _filter_by_lga_ward(df, key_prefix):
         )
 
     ward_pool = set()
+    canonical_wards = _get_wards_for_lga(selected_lga)
     if selected_lga != "All LGAs":
-        sub_lga = df[df["LGA"] == selected_lga]
+        sub_lga = df[df["LGA"].astype(str).str.strip().str.upper() == _normalize_lga_key(selected_lga)]
+        if sub_lga.empty:
+            sub_lga = df[df["LGA"] == selected_lga]
         ward_pool.update(
             str(x).strip()
             for x in sub_lga["Ward"].dropna().tolist()
             if str(x).strip() and str(x).strip() != "Unspecified"
         )
-        if isinstance(LGA_WARD_DATA, dict) and selected_lga in LGA_WARD_DATA:
-            ward_pool.update(str(w).strip() for w in LGA_WARD_DATA[selected_lga])
+        if canonical_wards:
+            ordered_wards = list(canonical_wards)
+            for w in sorted(ward_pool):
+                if w not in ordered_wards:
+                    ordered_wards.append(w)
+            ward_options = ["All Wards"] + ordered_wards
+        else:
+            ward_options = ["All Wards"] + sorted(ward_pool)
     else:
         ward_pool.update(
             str(x).strip()
             for x in df["Ward"].dropna().tolist()
             if str(x).strip() and str(x).strip() != "Unspecified"
         )
+        ward_options = ["All Wards"] + sorted(ward_pool)
 
-    ward_options = ["All Wards"] + sorted(ward_pool)
-    if (df["Ward"] == "Unspecified").any():
+    if (df["Ward"] == "Unspecified").any() and "Unspecified" not in ward_options:
         ward_options.append("Unspecified")
+
+    ward_filter_key = f"{key_prefix}_ward_filter"
+    _sync_ward_state_for_lga(selected_lga, ward_filter_key, ward_options, f"filter_{key_prefix}")
 
     with col2:
         selected_ward = st.selectbox(
             "Filter by Ward",
             options=ward_options,
-            key=f"{key_prefix}_ward_filter",
+            key=ward_filter_key,
         )
 
     with col3:
@@ -546,7 +605,9 @@ def render_skill_form():
 
             col_ward_sel, col_ward_txt = st.columns(2)
             with col_ward_sel:
-                kward = st.selectbox("Your Ward", LGA_WARD_DATA.get(klga_clean, []))
+                _kwards = _get_wards_for_lga(klga_raw)
+                _sync_ward_state_for_lga(klga_raw, "skill_ward_select", _kwards, "skill")
+                kward = st.selectbox("Your Ward", _kwards, key="skill_ward_select")
             with col_ward_txt:
                 manual_kward = st.text_input(
                     "Or Type Specific Ward", key="skill_manual_ward"
@@ -663,7 +724,9 @@ def render_scholarship_form():
 
             col_ward_sel, col_ward_txt = st.columns(2)
             with col_ward_sel:
-                sward = st.selectbox("Your Ward", LGA_WARD_DATA.get(slga_clean, []))
+                _swards = _get_wards_for_lga(slga_raw)
+                _sync_ward_state_for_lga(slga_raw, "sch_ward_select", _swards, "sch")
+                sward = st.selectbox("Your Ward", _swards, key="sch_ward_select")
             with col_ward_txt:
                 manual_sward = st.text_input(
                     "Or Type Specific Ward", key="scholarship_manual_ward"
@@ -766,7 +829,9 @@ def render_cv_vault():
 
             col_ward_sel, col_ward_txt = st.columns(2)
             with col_ward_sel:
-                vward = st.selectbox("Your Ward", LGA_WARD_DATA.get(vlga_clean, []))
+                _vwards = _get_wards_for_lga(vlga_raw)
+                _sync_ward_state_for_lga(vlga_raw, "cv_ward_select", _vwards, "cv")
+                vward = st.selectbox("Your Ward", _vwards, key="cv_ward_select")
             with col_ward_txt:
                 manual_vward = st.text_input(
                     "Or Type Specific Ward", key="cv_manual_ward"
@@ -824,7 +889,9 @@ def render_cun_trigger():
 
         col_ward_sel, col_ward_txt = st.columns(2)
         with col_ward_sel:
-            cward = st.selectbox("Affected Ward", LGA_WARD_DATA.get(clga_clean, []))
+            _cwards = _get_wards_for_lga(clga_raw)
+            _sync_ward_state_for_lga(clga_raw, "cun_ward_select", _cwards, "cun")
+            cward = st.selectbox("Affected Ward", _cwards, key="cun_ward_select")
         with col_ward_txt:
             manual_cward = st.text_input("Or Type Specific Ward", key="cun_manual_ward")
 
@@ -1283,8 +1350,10 @@ def ward_collation_officer_panel():
 
             col_ward_sel, col_ward_txt = st.columns(2)
             with col_ward_sel:
+                _sup_wards = _get_wards_for_lga(sup_lga_raw)
+                _sync_ward_state_for_lga(sup_lga_raw, "collation_ward_select", _sup_wards, "collation")
                 sup_ward = st.selectbox(
-                    "Your Ward", LGA_WARD_DATA.get(sup_lga_clean, [])
+                    "Your Ward", _sup_wards, key="collation_ward_select"
                 )
             with col_ward_txt:
                 manual_sup_ward = st.text_input(
@@ -1443,9 +1512,11 @@ def agent_panel():
             )
             col_ward_sel, col_ward_txt = st.columns(2)
             with col_ward_sel:
+                _pu_wards = _get_wards_for_lga(pu_lga)
+                _sync_ward_state_for_lga(pu_lga, "pu_ward_sel", _pu_wards, "pu")
                 pu_ward = st.selectbox(
                     "Specific Ward Precinct Designation *:",
-                    LGA_WARD_DATA.get(pu_lga, []),
+                    _pu_wards,
                     key="pu_ward_sel",
                 )
             with col_ward_txt:
@@ -2026,18 +2097,21 @@ def strategic_committees_panel():
 
         st.markdown("##### 📍 Geographic & Ward Locus")
         constituency_data = {
-            "Balanga": LGA_WARD_DATA.get("BALANGA", []),
-            "Billiri": LGA_WARD_DATA.get("BILLIRI", []),
+            "Balanga": _get_wards_for_lga("BALANGA"),
+            "Billiri": _get_wards_for_lga("BILLIRI"),
         }
         col_lga, col_ward_sel, col_ward_txt = st.columns([1, 1, 1])
         with col_lga:
             selected_lga = st.selectbox(
-                "Select LGA", options=list(constituency_data.keys())
+                "Select LGA", options=list(constituency_data.keys()), key="committee_lga_select"
             )
         with col_ward_sel:
+            _comm_wards = constituency_data.get(selected_lga, []) + ["Other"]
+            _sync_ward_state_for_lga(selected_lga, "committee_ward_select", _comm_wards, "committee")
             selected_ward = st.selectbox(
                 "Select Political Ward",
-                options=constituency_data.get(selected_lga, []) + ["Other"],
+                options=_comm_wards,
+                key="committee_ward_select",
             )
         with col_ward_txt:
             manual_ward = st.text_input("Or Type Specific Ward")
