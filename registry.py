@@ -13,23 +13,36 @@ CONSTITUENCY_DESC = "BALANGA/BILLIRI FEDERAL CONSTITUENCY (GOMBE STATE)"
 
 GEOGRAPHY = {
     "BALANGA": [
-        "Wuro-dadiya",
-        "Gelengu",
+        "Bambam",
         "Bangu",
-        "Dala-waja",
-        "Nyuwar",
-        "Jessu",
+        "Dadiya",
+        "Degri",
+        "Gelengu",
         "Kindiyo",
-        "Kulani",
-        "Sikkam",
-        "Chama",
+        "Mona",
+        "Nyuwar/Jessu",
+        "Swa",
+        "Talasse/Dung/Reme",
     ],
-    "BILLIRI": ["Billiri-North", "Billiri-South", "Kalmai", "Tal", "Todi"],
+    "BILLIRI": [
+        "Banganje North",
+        "Banganje South",
+        "Bare",
+        "Billiri North",
+        "Billiri South",
+        "Kalmai",
+        "Tal",
+        "Tanglang",
+        "Todi",
+        "Tudu-Kwaya",
+    ],
 }
 
 LGA_WARD_DATA = {
     "BALANGA": GEOGRAPHY["BALANGA"],
     "BILLIRI": GEOGRAPHY["BILLIRI"],
+    "Balanga": GEOGRAPHY["BALANGA"],
+    "Billiri": GEOGRAPHY["BILLIRI"],
 }
 
 # ==============================================================================
