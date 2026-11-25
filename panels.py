@@ -1450,29 +1450,61 @@ def _render_saved_submissions(submission_types):
         st.info("No saved submissions are available for this view.")
         return
 
-    # Convert records to DataFrame for processing
-    df = pd.DataFrame(
-        [
+    # Convert records to DataFrame for processing and flatten nested party_votes
+    flattened_rows = []
+    for record in records:
+        payload = dict(record.get("payload") or {})
+        party_votes = payload.pop("party_votes", None)
+        if isinstance(party_votes, dict):
+            for party_name, votes in party_votes.items():
+                payload.setdefault(f"{party_name}_Votes", votes)
+
+        flattened_rows.append(
             {
                 "Submission Type": record["submission_type"],
                 "Created At": record["created_at"],
                 "ID": record.get("id", ""),
-                **record["payload"],
+                **payload,
             }
-            for record in records
-        ]
-    )
+        )
+
+    df = pd.DataFrame(flattened_rows)
 
     # Add search and filter controls
     st.markdown("### 📊 Live Submission Metrics & Management")
-    
+
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Submissions", len(df))
     with col2:
-        st.metric("Submission Types", df["Submission Type"].nunique() if "Submission Type" in df.columns else 0)
+        st.metric(
+            "Submission Types",
+            df["Submission Type"].nunique() if "Submission Type" in df.columns else 0,
+        )
     with col3:
-        st.metric("Latest Update", df["Created At"].max() if "Created At" in df.columns else "N/A")
+        st.metric(
+            "Latest Update",
+            df["Created At"].max() if "Created At" in df.columns else "N/A",
+        )
+
+    # Ward & LGA agent coverage summary for Form EC8A / collation sync
+    has_ward = "ward" in df.columns and df["ward"].dropna().astype(str).str.strip().ne("").any()
+    has_lga = "lga" in df.columns and df["lga"].dropna().astype(str).str.strip().ne("").any()
+    if has_ward or has_lga:
+        cov1, cov2, cov3 = st.columns(3)
+        with cov1:
+            unique_lgas = df["lga"].dropna().astype(str).str.strip().nunique() if has_lga else 0
+            st.metric("LGAs Synced", unique_lgas)
+        with cov2:
+            unique_wards = df["ward"].dropna().astype(str).str.strip().nunique() if has_ward else 0
+            st.metric("Wards Covered", unique_wards)
+        with cov3:
+            active_agents = (
+                df["officer_name"].dropna().astype(str).str.strip().nunique()
+                if "officer_name" in df.columns
+                else 0
+            )
+            st.metric("Reporting Field Agents", active_agents)
 
     st.write("---")
 
@@ -1481,10 +1513,10 @@ def _render_saved_submissions(submission_types):
     with search_col:
         search_term = st.text_input(
             "🔍 Search submissions",
-            placeholder="Search by name, phone, NIN, or any field...",
+            placeholder="Search by name, phone, ward, BVAS serial, or any field...",
             key="admin_submissions_search",
         )
-    
+
     with filter_col:
         if "Submission Type" in df.columns:
             all_types = ["All Types"] + sorted(df["Submission Type"].unique().tolist())
@@ -1499,11 +1531,13 @@ def _render_saved_submissions(submission_types):
     # Apply filters
     filtered_df = df
     if search_term:
-        mask = filtered_df.astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
-        ).any(axis=1)
+        mask = (
+            filtered_df.astype(str)
+            .apply(lambda x: x.str.contains(search_term, case=False, na=False))
+            .any(axis=1)
+        )
         filtered_df = filtered_df[mask]
-    
+
     if filter_type != "All Types" and "Submission Type" in filtered_df.columns:
         filtered_df = filtered_df[filtered_df["Submission Type"] == filter_type]
 
@@ -1524,10 +1558,10 @@ def _render_saved_submissions(submission_types):
     # Export functionality
     st.markdown("---")
     export_col1, export_col2, export_col3 = st.columns([1, 1, 1])
-    
+
     with export_col1:
         # CSV Export
-        csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+        csv_data = filtered_df.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="📥 Export as CSV",
             data=csv_data,
@@ -1535,14 +1569,15 @@ def _render_saved_submissions(submission_types):
             mime="text/csv",
             use_container_width=True,
         )
-    
+
     with export_col2:
         # Excel Export (if openpyxl available)
         try:
             from io import BytesIO
+
             output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                filtered_df.to_excel(writer, index=False, sheet_name='Submissions')
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                filtered_df.to_excel(writer, index=False, sheet_name="Submissions")
             excel_data = output.getvalue()
             st.download_button(
                 label="📊 Export as Excel",

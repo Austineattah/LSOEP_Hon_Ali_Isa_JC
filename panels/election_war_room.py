@@ -196,8 +196,8 @@ def render_election_war_room():
     st.subheader("Election War Room")
     st.warning(
         "Results and evidence are private to this browser session; they are "
-        "not shared or saved after the session ends."
+        "not shared or saved after the session ends. Field agent EC8A capture "
+        "belongs exclusively to the Polling Unit Agent screen."
     )
     _render_dashboard()
-    _render_field_form()
     _render_evidence_download()

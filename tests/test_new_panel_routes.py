@@ -17,18 +17,23 @@ def button_with_label(app, label):
 
 def legacy_route(suffix):
     tree = ast.parse(Path("main.py").read_text(encoding="utf-8"))
-    navigation = next(
-        node.value
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        and any(
-            isinstance(target, ast.Name) and target.id == "NAVIGATION_OPTIONS"
-            for target in node.targets
+    candidates = []
+    for var_name in ("NAVIGATION_OPTIONS", "ADMIN_COMMAND_HUBS"):
+        assign = next(
+            (
+                node.value
+                for node in tree.body
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == var_name
+                    for target in node.targets
+                )
+            ),
+            None,
         )
-    )
-    return next(
-        label for label in ast.literal_eval(navigation) if label.endswith(suffix)
-    )
+        if assign is not None:
+            candidates.extend(ast.literal_eval(assign))
+    return next(label for label in candidates if suffix in label)
 
 
 class NewPanelRoutingTests(unittest.TestCase):
@@ -48,33 +53,33 @@ class NewPanelRoutingTests(unittest.TestCase):
             self.assertFalse(app.exception)
             render.assert_called_with(is_admin_mode=True)
 
-    def test_election_route_is_gated_before_telemetry_and_panel(self):
+    def test_standalone_agent_route_is_gated_before_agent_panel(self):
         with (
             patch.object(auth, "require_role", return_value=False) as require,
-            patch.object(persistence, "list_submissions") as read,
-            patch.object(election_war_room, "render_election_war_room") as render,
+            patch.object(panels, "agent_panel") as render,
         ):
             app = AppTest.from_file("main.py", default_timeout=120)
-            app.session_state.current_route = "Election Situation Room (War Room)"
+            app.session_state.current_route = "STANDALONE_AGENT_INPUT_SCREEN"
+            app.session_state.portal_layer_unlocked = True
             app.run()
             self.assertFalse(app.exception)
             require.assert_called_once_with("agent")
-            read.assert_not_called()
             render.assert_not_called()
 
-    def test_election_navigation_renders_after_agent_access(self):
+    def test_ground_truth_ec8a_route_renders_admin_submissions(self):
         with (
-            patch.object(auth, "require_role", return_value=True) as require,
+            patch.object(auth, "require_role", return_value=True),
             patch.object(persistence, "list_submissions", return_value=[]),
-            patch.object(election_war_room, "render_election_war_room") as render,
+            patch.object(panels, "render_admin_submissions") as render,
         ):
-            app = AppTest.from_file("main.py", default_timeout=120).run()
-            button_with_label(app, "Election Situation Room (War Room)").click().run()
+            app = AppTest.from_file("main.py", default_timeout=120)
+            app.session_state.current_route = legacy_route("Ground Truth Form EC8A Data")
+            app.session_state.portal_layer_unlocked = True
+            app.run()
             self.assertFalse(app.exception)
-            require.assert_called_with("agent")
-            render.assert_called_once_with()
+            render.assert_called_once_with(["ward_collation", "polling_unit_tally"])
             app.button(key="global_return_nav_btn").click().run()
-            self.assertEqual(app.session_state.current_route, "HOME")
+            self.assertEqual(app.session_state.current_route, "ADMIN_HUB_DASHBOARD")
 
     def test_existing_public_routes_still_dispatch_to_legacy_panels(self):
         routes = (

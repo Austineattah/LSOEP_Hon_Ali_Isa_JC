@@ -203,7 +203,7 @@ class RecruitmentPanelTests(unittest.TestCase):
 
 
 class ElectionWarRoomTests(unittest.TestCase):
-    def test_requires_agent_access_before_session_data_is_rendered(self):
+    def test_requires_admin_access_before_session_data_is_rendered(self):
         with patch.object(election, "require_role", return_value=False):
             app = AppTest.from_string(
                 "from panels.election_war_room import render_election_war_room\n"
@@ -222,63 +222,22 @@ class ElectionWarRoomTests(unittest.TestCase):
         fake.getvalue.return_value = b"%PDF-" + b"x" * election.MAX_EVIDENCE_BYTES
         self.assertIn("10 MB", election._validate_evidence(fake))
 
-    def test_session_result_upload_filters_and_duplicate_protection(self):
-        upload = Mock(name="upload")
-        upload.name = "ec8a.pdf"
-        upload.type = "application/pdf"
-        upload.getvalue.return_value = b"%PDF-1.7\nexample"
+    def test_war_room_excludes_field_agent_form(self):
         app_code = (
             "from panels.election_war_room import render_election_war_room\n"
             "render_election_war_room()\n"
         )
-        with (
-            patch.object(election, "require_role", return_value=True),
-            patch.object(election.st, "file_uploader", return_value=upload),
-        ):
+        with patch.object(election, "require_role", return_value=True):
             app = AppTest.from_string(app_code, default_timeout=45).run()
             self.assertFalse(app.exception)
             self.assertEqual(len(app.metric), 4)
-            element_with_label(app.selectbox, "LGA").select("Balanga")
-            for label, value in (
-                ("Ward", "Gelengu"),
-                ("Polling Unit Code", "PU001"),
-                ("Polling Unit Name", "Test Unit"),
-                ("BVAS Serial", "BVAS001"),
-                ("Agent", "Test Agent"),
-            ):
-                element_with_label(app.text_input, label).input(value)
-            for label, value in (
-                ("Accredited Voters", 100),
-                ("Total Votes Cast", 90),
-                ("Party A Votes", 50),
-                ("Party B Votes", 30),
-            ):
-                element_with_label(app.number_input, label).set_value(value)
-            element_with_label(app.button, "Add polling unit result").click().run()
-            self.assertFalse(app.exception)
-            self.assertEqual(len(app.session_state.election_data), 1)
-            row = app.session_state.election_data[0]
-            self.assertEqual(set(row), set(election._COLUMNS))
-            self.assertEqual(row["Party_A"], 50)
-            self.assertEqual(row["Form_EC8A_Status"], "Uploaded - Awaiting Verification")
-            self.assertEqual(
-                app.session_state.election_evidence[("Balanga", "Gelengu", "PU001")]["data"],
-                upload.getvalue(),
+            self.assertFalse(
+                any(
+                    "Field Agent Form EC8A upload portal" in item.value
+                    for item in app.subheader
+                )
             )
-            element_with_label(app.number_input, "Party A Votes").set_value(100)
-            element_with_label(app.button, "Add polling unit result").click().run()
-            self.assertTrue(any("cannot exceed" in item.value for item in app.error))
-            self.assertEqual(len(app.session_state.election_data), 1)
-            element_with_label(app.number_input, "Party A Votes").set_value(50)
-            element_with_label(app.button, "Add polling unit result").click().run()
-            self.assertTrue(any("already" in item.value for item in app.error))
-            self.assertEqual(len(app.session_state.election_data), 1)
-            app.session_state.election_data.append(
-                {**row, "LGA": "Billiri", "PU_Code": "PU002"}
-            )
-            app.run()
-            element_with_label(app.selectbox, "Filter by LGA").select("Billiri").run()
-            self.assertEqual(element_with_label(app.metric, "Polling units").value, "1")
+            self.assertFalse(any(btn.label == "Add polling unit result" for btn in app.button))
 
 
 if __name__ == "__main__":
