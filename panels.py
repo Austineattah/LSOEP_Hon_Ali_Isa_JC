@@ -2149,8 +2149,8 @@ def render_speak_directly_panel():
     st.write("---")
 
     constituency_data = {
-        "Balanga": LGA_WARD_DATA.get("BALANGA", []),
-        "Billiri": LGA_WARD_DATA.get("BILLIRI", []),
+        "Balanga": _get_wards_for_lga("BALANGA"),
+        "Billiri": _get_wards_for_lga("BILLIRI"),
     }
 
     with st.form(key="speak_direct_form", clear_on_submit=True):
@@ -2166,10 +2166,15 @@ def render_speak_directly_panel():
             selected_lga = st.selectbox(
                 "Select Local Government Area (LGA)",
                 options=list(constituency_data.keys()),
+                key="speak_direct_lga_select",
             )
+        _sd_wards = constituency_data.get(selected_lga, [])
+        _sync_ward_state_for_lga(selected_lga, "speak_direct_ward_select", _sd_wards, "speak_direct")
         with col4:
             selected_ward = st.selectbox(
-                "Select Political Ward", options=constituency_data.get(selected_lga, [])
+                "Select Political Ward",
+                options=_sd_wards,
+                key="speak_direct_ward_select",
             )
         with col5:
             manual_ward = st.text_input(
