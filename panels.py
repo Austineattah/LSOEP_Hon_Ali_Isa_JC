@@ -10,6 +10,7 @@ import textwrap
 
 from auth import has_committee_access, is_logged_in, render_login_prompt, require_role
 from panels.election_war_room import render_election_war_room
+import persistence
 from persistence import (
     PersistenceError,
     find_mock_submissions,
@@ -34,7 +35,7 @@ def _commit_submission(submission_type, payload, uploads=None, dedupe_fields=Non
             uploads=uploads,
             dedupe_fields=dedupe_fields,
         )
-    except PersistenceError as exc:
+    except (PersistenceError, getattr(persistence, "PersistenceError", PersistenceError)) as exc:
         st.error(str(exc))
         return False
     return True
@@ -139,32 +140,370 @@ def render_global_announcement_marquee():
     )
 
 
-def render_admin_announcement_control():
-    st.markdown("##### 📢 Central Announcement Dispatch & Marquee Matrix Manager")
-    st.caption(
-        "Inject high-priority global alerts that instantly override the home page marquee ticker."
-    )
+def _load_submissions_dataframe(submission_types=None, limit=500):
+    try:
+        records = getattr(persistence, "list_submissions", list_submissions)(submission_types, limit=limit)
+    except PersistenceError as exc:
+        st.error(str(exc))
+        return None
+    if not records:
+        return pd.DataFrame()
 
-    with st.form("admin_announcement_control_form"):
-        new_ticker = st.text_input(
-            "Type Plain Text Alert Only (Do NOT input raw HTML symbols like < or >) *:",
-            placeholder="Type scrolling message here...",
+    rows = []
+    for record in records:
+        payload = dict(record.get("payload") or {})
+        party_votes = payload.pop("party_votes", None)
+        if isinstance(party_votes, dict):
+            for party_name, votes in party_votes.items():
+                payload.setdefault(f"{party_name}_Votes", votes)
+
+        lga_val = (
+            payload.get("lga")
+            or payload.get("LGA")
+            or payload.get("local_government")
+            or ""
+        )
+        ward_val = (
+            payload.get("ward")
+            or payload.get("Ward")
+            or payload.get("ward_name")
+            or ""
+        )
+        name_val = (
+            payload.get("full_name")
+            or payload.get("applicant_name")
+            or payload.get("name")
+            or payload.get("citizen_name")
+            or payload.get("title")
+            or ""
         )
 
-        if st.form_submit_button(
-            "🔒 LOCK ANNOUNCEMENT AND RE-PROPAGATE MARQUEE", width="stretch"
-        ):
-            if new_ticker.strip():
-                try:
-                    submit_submission("announcement", {"message": new_ticker.strip()})
-                except PersistenceError as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state.global_scrolling_announcement = new_ticker.strip()
-                    st.success("The announcement was saved and published.")
-                    st.rerun()
+        rows.append(
+            {
+                "Submission ID": record.get("id", ""),
+                "Channel": record.get("submission_type", "unknown"),
+                "Created At": record.get("created_at", ""),
+                "LGA": str(lga_val).strip() or "Unspecified",
+                "Ward": str(ward_val).strip() or "Unspecified",
+                "Name / Subject": str(name_val).strip() or "—",
+                **payload,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _render_lga_ward_charts(df, title_prefix, category_col="Channel", key_prefix="batch_a"):
+    try:
+        import plotly.express as px
+    except ImportError:
+        st.info("Install plotly to view interactive charts.")
+        return
+
+    if df is None or df.empty:
+        return
+
+    lga_ward_df = (
+        df.groupby(["LGA", "Ward"], dropna=False)
+        .size()
+        .reset_index(name="Entries")
+        .sort_values("Entries", ascending=False)
+    )
+    cat_df = (
+        df.groupby(category_col, dropna=False)
+        .size()
+        .reset_index(name="Count")
+        .sort_values("Count", ascending=False)
+    )
+
+    col_bar, col_pie = st.columns([3, 2])
+    with col_bar:
+        fig_bar = px.bar(
+            lga_ward_df.head(25),
+            x="Ward",
+            y="Entries",
+            color="LGA",
+            barmode="group",
+            title=f"{title_prefix} — Entries by Ward & LGA",
+            text="Entries",
+        )
+        fig_bar.update_layout(
+            xaxis_title="Ward",
+            yaxis_title="Submissions",
+            legend_title="LGA",
+            height=360,
+        )
+        st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_bar")
+
+    with col_pie:
+        fig_pie = px.pie(
+            cat_df,
+            names=category_col,
+            values="Count",
+            hole=0.38,
+            title=f"{title_prefix} — Share by {category_col}",
+        )
+        fig_pie.update_layout(height=360)
+        st.plotly_chart(fig_pie, use_container_width=True, key=f"{key_prefix}_pie")
+
+
+def _filter_by_lga_ward(df, key_prefix):
+    if df is None or df.empty:
+        return df
+
+    available_lgas = sorted(
+        {
+            str(x).strip()
+            for x in df["LGA"].dropna().tolist()
+            if str(x).strip() and str(x).strip() != "Unspecified"
+        }
+    )
+    for canonical_lga in ("Balanga", "Billiri"):
+        if canonical_lga not in available_lgas and isinstance(LGA_WARD_DATA, dict) and canonical_lga in LGA_WARD_DATA:
+            available_lgas.append(canonical_lga)
+    if (df["LGA"] == "Unspecified").any():
+        available_lgas.append("Unspecified")
+
+    lga_options = ["All LGAs"] + available_lgas
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        selected_lga = st.selectbox(
+            "Filter by Local Government (LGA)",
+            options=lga_options,
+            key=f"{key_prefix}_lga_filter",
+        )
+
+    ward_pool = set()
+    if selected_lga != "All LGAs":
+        sub_lga = df[df["LGA"] == selected_lga]
+        ward_pool.update(
+            str(x).strip()
+            for x in sub_lga["Ward"].dropna().tolist()
+            if str(x).strip() and str(x).strip() != "Unspecified"
+        )
+        if isinstance(LGA_WARD_DATA, dict) and selected_lga in LGA_WARD_DATA:
+            ward_pool.update(str(w).strip() for w in LGA_WARD_DATA[selected_lga])
+    else:
+        ward_pool.update(
+            str(x).strip()
+            for x in df["Ward"].dropna().tolist()
+            if str(x).strip() and str(x).strip() != "Unspecified"
+        )
+
+    ward_options = ["All Wards"] + sorted(ward_pool)
+    if (df["Ward"] == "Unspecified").any():
+        ward_options.append("Unspecified")
+
+    with col2:
+        selected_ward = st.selectbox(
+            "Filter by Ward",
+            options=ward_options,
+            key=f"{key_prefix}_ward_filter",
+        )
+
+    with col3:
+        search_term = st.text_input(
+            "Search name / phone / keyword",
+            placeholder="Type name, ward, or keyword...",
+            key=f"{key_prefix}_search",
+        ).strip().lower()
+
+    filtered = df.copy()
+    if selected_lga != "All LGAs":
+        filtered = filtered[filtered["LGA"] == selected_lga]
+    if selected_ward != "All Wards":
+        filtered = filtered[filtered["Ward"] == selected_ward]
+    if search_term:
+        mask = filtered.apply(
+            lambda row: search_term in " ".join(str(v).lower() for v in row.values if v is not None),
+            axis=1,
+        )
+        filtered = filtered[mask]
+    return filtered
+
+
+def render_admin_announcement_control():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 📢 Executive Announcement & Live Marquee Control")
+    st.caption(
+        "Update the global scrolling ticker so changes persist and immediately reflect on the front gateway marquee."
+    )
+
+    current_msg = st.session_state.get(
+        "global_scrolling_announcement",
+        f"Welcome to the official constituency outreach portal of {HON_TITLE}.",
+    )
+    st.info(f"**Active Front-Gateway Marquee:** {current_msg}")
+
+    with st.form("admin_announcement_control_form"):
+        new_ticker = st.text_area(
+            "Scrolling Marquee Message (plain text only, no raw < or > tags) *:",
+            value=current_msg,
+            height=100,
+            key="marquee_broadcast_input_field",
+        )
+        submitted = st.form_submit_button(
+            "🚀 Update & Publish to Front Gateway", width="stretch"
+        )
+
+    if submitted:
+        cleaned = new_ticker.strip()
+        if not cleaned:
+            st.warning("Please enter a valid announcement message before publishing.")
+        elif "<" in cleaned or ">" in cleaned:
+            st.warning("Please remove raw < or > characters from the announcement text.")
+        else:
+            try:
+                submit_submission("announcement", {"message": cleaned})
+            except PersistenceError as exc:
+                st.error(str(exc))
             else:
-                st.warning("Please specify a valid text announcement.")
+                st.session_state.global_scrolling_announcement = cleaned
+                st.session_state.announcement_loaded = True
+                try:
+                    list_submissions.clear()
+                except Exception:
+                    pass
+                st.success("Announcement updated and queued for immediate front-gateway display.")
+                st.rerun()
+
+    history_df = _load_submissions_dataframe(["announcement"], limit=30)
+    if history_df is not None and not history_df.empty:
+        st.markdown("#### Recent Broadcast Log")
+        display_cols = [c for c in ["Created At", "message", "Name / Subject", "Submission ID"] if c in history_df.columns]
+        st.dataframe(history_df[display_cols], use_container_width=True, hide_index=True)
+
+
+def render_master_registry_matrix():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 📊 Master Registry Matrix — Balanga & Billiri Constituency Focal Point")
+    st.caption(
+        "Centralized breakdown of all constituency channel requests by Local Government Area (Balanga / Billiri) and Ward."
+    )
+
+    registry_types = [
+        "palliative_direct",
+        "palliative_vouching",
+        "skill_application",
+        "scholarship_application",
+        "cv_application",
+        "committee_member",
+        "speak_direct",
+        "community_urgent_need",
+        "vouching_verification",
+    ]
+    df = _load_submissions_dataframe(registry_types, limit=1000)
+    if df is None:
+        return
+    if df.empty:
+        st.info("No constituency registry entries have been recorded yet.")
+        return
+
+    filtered = _filter_by_lga_ward(df, "master_registry")
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Filtered Entries", len(filtered), delta=f"of {len(df)} total")
+    with m2:
+        st.metric("Balanga Entries", int((filtered["LGA"].str.lower() == "balanga").sum()))
+    with m3:
+        st.metric("Billiri Entries", int((filtered["LGA"].str.lower() == "billiri").sum()))
+    with m4:
+        active_wards = filtered[filtered["Ward"] != "Unspecified"]["Ward"].nunique()
+        st.metric("Wards Represented", int(active_wards))
+
+    _render_lga_ward_charts(filtered, "Master Registry", category_col="Channel", key_prefix="master_reg")
+
+    st.markdown("#### Constituency Registry Entries")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+    render_module_download_trigger(filtered, "master_registry_balanga_billiri", "master_registry_dl")
+
+
+def render_citizen_feedback_hub():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 🗣️ Citizen Feedback & Urgent Needs — LGA & Ward Breakdown")
+    st.caption(
+        "Direct constituent messages and urgent community needs organized by Local Government Area and Ward."
+    )
+
+    df = _load_submissions_dataframe(["speak_direct", "community_urgent_need"], limit=500)
+    if df is None:
+        return
+    if df.empty:
+        st.info("No citizen feedback or community urgent need submissions available yet.")
+        return
+
+    filtered = _filter_by_lga_ward(df, "citizen_feedback")
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Feedback / Need Entries", len(filtered))
+    with c2:
+        st.metric("Direct Messages", int((filtered["Channel"] == "speak_direct").sum()))
+    with c3:
+        st.metric("Urgent Community Needs", int((filtered["Channel"] == "community_urgent_need").sum()))
+
+    _render_lga_ward_charts(filtered, "Citizen Feedback", category_col="Channel", key_prefix="citizen_fb")
+
+    st.markdown("#### Constituent Submissions by LGA & Ward")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+    render_module_download_trigger(filtered, "citizen_feedback_lga_ward", "citizen_fb_dl")
+
+
+def render_scholar_talent_matrix():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 🎓 Scholar Talent & Empowerment Matrix — By LGA & Ward")
+    st.caption(
+        "Scholarship, skill vocational, and talent/CV entries mapped across Balanga and Billiri LGAs and Wards."
+    )
+
+    df = _load_submissions_dataframe(
+        ["scholarship_application", "skill_application", "cv_application"], limit=500
+    )
+    if df is None:
+        return
+    if df.empty:
+        st.info("No scholarship or talent entries have been submitted yet.")
+        return
+
+    filtered = _filter_by_lga_ward(df, "scholar_talent")
+
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        st.metric("Total Talent / Scholar Entries", len(filtered))
+    with s2:
+        st.metric("Scholarships", int((filtered["Channel"] == "scholarship_application").sum()))
+    with s3:
+        st.metric("Skills & CV Vault", int(filtered["Channel"].isin(["skill_application", "cv_application"]).sum()))
+
+    _render_lga_ward_charts(filtered, "Scholar Talent Matrix", category_col="Channel", key_prefix="scholar_mat")
+
+    st.markdown("#### Named Scholars & Talent Entries by LGA & Ward")
+    preferred_cols = [
+        c
+        for c in [
+            "Name / Subject",
+            "LGA",
+            "Ward",
+            "Channel",
+            "institution",
+            "course_of_study",
+            "skill_area",
+            "phone",
+            "Created At",
+        ]
+        if c in filtered.columns
+    ]
+    other_cols = [c for c in filtered.columns if c not in preferred_cols]
+    st.dataframe(filtered[preferred_cols + other_cols], use_container_width=True, hide_index=True)
+    render_module_download_trigger(filtered, "scholar_talent_matrix", "scholar_mat_dl")
 
 
 def render_skill_form():
@@ -2167,3 +2506,752 @@ def render_vouching_verification_panel():
         "This module allows authenticated community leaders to vouch for members of their community, streamlining access to empowerment programs and grants. Please fill out your credentials as the vouching leader and the details of the applicant you are endorsing."
     )
     render_palliative_form(focus_on_vouching=True)
+
+
+def _normalize_person_name(value):
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", str(value or "").strip().lower())
+    tokens = sorted(t for t in cleaned.split() if len(t) > 1)
+    return " ".join(tokens)
+
+
+def _normalize_nin(value):
+    digits = re.sub(r"\D", "", str(value or "").strip())
+    return digits if len(digits) >= 6 else ""
+
+
+def _extract_nin_from_row(row_dict):
+    for key, val in row_dict.items():
+        k_norm = re.sub(r"[^a-z0-9]", "", str(key).lower())
+        if "nin" in k_norm or "nationalid" in k_norm or "bvn" in k_norm:
+            nin = _normalize_nin(val)
+            if nin:
+                return nin
+    return ""
+
+
+def _scan_local_data_files(max_files=40, max_rows_per_file=500):
+    skip_dirs = {".git", "backups", "__pycache__"}
+    skip_prefixes = (".venv", "venv")
+    scanned_rows = []
+    scanned_files = []
+    warnings_list = []
+
+    root = Path(".")
+    candidates = []
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        if p.name.startswith(("_inspect", "_apply")):
+            continue
+        if any(part in skip_dirs or part.startswith(skip_prefixes) for part in p.parts):
+            continue
+        ext = p.suffix.lower()
+        if ext in {".csv", ".xlsx", ".xls", ".db", ".sqlite", ".sqlite3"}:
+            candidates.append(p)
+
+    for file_path in sorted(candidates)[:max_files]:
+        ext = file_path.suffix.lower()
+        try:
+            if ext == ".csv":
+                df_file = pd.read_csv(file_path, nrows=max_rows_per_file, dtype=str)
+            elif ext in {".xlsx", ".xls"}:
+                df_file = pd.read_excel(file_path, nrows=max_rows_per_file, dtype=str)
+            else:
+                import sqlite3
+
+                conn = sqlite3.connect(f"file:{file_path.resolve()}?mode=ro", uri=True)
+                try:
+                    tables = [
+                        r[0]
+                        for r in conn.execute(
+                            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                        ).fetchall()
+                    ]
+                    dfs = []
+                    for tbl in tables[:8]:
+                        safe_tbl = re.sub(r"[^A-Za-z0-9_]", "", tbl)
+                        if safe_tbl:
+                            t_df = pd.read_sql_query(
+                                f"SELECT * FROM {safe_tbl} LIMIT {int(max_rows_per_file)}", conn
+                            )
+                            t_df["__source_table__"] = safe_tbl
+                            dfs.append(t_df)
+                    df_file = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+                finally:
+                    conn.close()
+
+            if df_file is None or df_file.empty:
+                continue
+
+            scanned_files.append(str(file_path))
+            for idx, rec in enumerate(df_file.fillna("").to_dict(orient="records")):
+                raw_name = (
+                    rec.get("full_name")
+                    or rec.get("name")
+                    or rec.get("applicant_name")
+                    or rec.get("beneficiary_name")
+                    or rec.get("Name")
+                    or ""
+                )
+                lga_val = (
+                    rec.get("lga")
+                    or rec.get("LGA")
+                    or rec.get("local_government")
+                    or "Unspecified"
+                )
+                ward_val = (
+                    rec.get("ward")
+                    or rec.get("Ward")
+                    or rec.get("ward_name")
+                    or "Unspecified"
+                )
+                nin_val = _extract_nin_from_row(rec)
+                src_tbl = rec.get("__source_table__", "")
+                source_label = f"File:{file_path.name}" + (f"[{src_tbl}]" if src_tbl else "")
+                scanned_rows.append(
+                    {
+                        "Source": source_label,
+                        "Record ID": f"{file_path.name}#{idx + 1}",
+                        "Name": str(raw_name).strip() or "Unnamed Entry",
+                        "Norm Name": _normalize_person_name(raw_name),
+                        "NIN": nin_val or "Not Provided",
+                        "LGA": str(lga_val).strip() or "Unspecified",
+                        "Ward": str(ward_val).strip() or "Unspecified",
+                        "Channel": str(rec.get("submission_type") or rec.get("program") or "internal_file"),
+                    }
+                )
+        except Exception as exc:
+            warnings_list.append(f"{file_path.name}: {exc}")
+
+    return scanned_rows, scanned_files, warnings_list
+
+
+def _compute_radar_conflicts(db_df):
+    combined = []
+    if db_df is not None and not db_df.empty:
+        for _, r in db_df.iterrows():
+            row_dict = r.to_dict()
+            raw_name = row_dict.get("Name / Subject", "")
+            nin_val = _extract_nin_from_row(row_dict)
+            combined.append(
+                {
+                    "Source": "Portal DB",
+                    "Record ID": str(row_dict.get("Submission ID") or ""),
+                    "Name": str(raw_name).strip() or "Unnamed Entry",
+                    "Norm Name": _normalize_person_name(raw_name),
+                    "NIN": nin_val or "Not Provided",
+                    "LGA": str(row_dict.get("LGA") or "Unspecified").strip() or "Unspecified",
+                    "Ward": str(row_dict.get("Ward") or "Unspecified").strip() or "Unspecified",
+                    "Channel": str(row_dict.get("Channel") or "submission"),
+                }
+            )
+
+    file_rows, scanned_files, scan_warnings = _scan_local_data_files()
+    combined.extend(file_rows)
+
+    all_df = pd.DataFrame(combined) if combined else pd.DataFrame()
+    if all_df.empty:
+        return pd.DataFrame(), all_df, scanned_files, scan_warnings
+
+    # Group by normalized name + NIN when both are present, or exact normalized name + NIN match
+    flagged_records = []
+    valid_pairs = all_df[
+        (all_df["Norm Name"] != "") & (all_df["NIN"] != "Not Provided")
+    ]
+    if not valid_pairs.empty:
+        grouped = valid_pairs.groupby(["Norm Name", "NIN"])
+        for (norm_name, nin), grp in grouped:
+            if len(grp) > 1:
+                distinct_lgas = sorted({w for w in grp["LGA"] if w and w != "Unspecified"})
+                distinct_wards = sorted({w for w in grp["Ward"] if w and w != "Unspecified"})
+                disguise_flag = len(distinct_lgas) > 1 or len(distinct_wards) > 1
+                conflict_type = (
+                    "Cross-LGA / Cross-Ward Double Dip"
+                    if len(distinct_lgas) > 1
+                    else ("Cross-Ward Double Dip" if len(distinct_wards) > 1 else "Repeat Same Name + NIN")
+                )
+                for _, item in grp.iterrows():
+                    flagged_records.append(
+                        {
+                            "Constituent Name": item["Name"],
+                            "NIN": nin,
+                            "LGA": item["LGA"],
+                            "Ward": item["Ward"],
+                            "Conflict Type": conflict_type,
+                            "Ward/LGA Switch Detected": "YES" if disguise_flag else "NO",
+                            "Occurrences": int(len(grp)),
+                            "Source": item["Source"],
+                            "Channel": item["Channel"],
+                            "Record ID": item["Record ID"],
+                            "Key": f"{norm_name}|{nin}",
+                        }
+                    )
+
+    return pd.DataFrame(flagged_records), all_df, scanned_files, scan_warnings
+
+
+def render_radar_deduplication_interceptor():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 🛡️ RADAR Deduplication Interceptor — Equity & Double-Dipping Guard")
+    st.caption(
+        "Automatically scans portal database records and local CSV/Excel/SQLite files to detect matching Name + NIN entries switching wards or LGAs for palliatives/resources."
+    )
+
+    col_btn, col_info = st.columns([1, 3])
+    with col_btn:
+        if st.button("🔄 Scan Database & Files Now", use_container_width=True, key="radar_rescan_btn"):
+            try:
+                list_submissions.clear()
+            except Exception:
+                pass
+            st.rerun()
+    with col_info:
+        st.caption(
+            "Equity policy: prevents concentration of constituency palliatives/resources in a single ward or double claims via ward/LGA switching."
+        )
+
+    db_df = _load_submissions_dataframe(limit=1000)
+    if db_df is None:
+        return
+
+    conflicts_df, all_scanned_df, scanned_files, scan_warnings = _compute_radar_conflicts(db_df)
+    if scanned_files:
+        st.caption(f"Scanned internal files: {', '.join(scanned_files)}")
+    for warn in scan_warnings:
+        st.warning(f"File scan note: {warn}")
+
+    r1, r2, r3, r4 = st.columns(4)
+    with r1:
+        st.metric("Total Records Scanned", len(all_scanned_df))
+    with r2:
+        st.metric("Flagged Double-Dip Entries", len(conflicts_df))
+    with r3:
+        switch_count = (
+            int((conflicts_df["Ward/LGA Switch Detected"] == "YES").sum())
+            if not conflicts_df.empty
+            else 0
+        )
+        st.metric("Ward/LGA Switch Flags", switch_count)
+    with r4:
+        unique_keys = conflicts_df["Key"].nunique() if not conflicts_df.empty else 0
+        st.metric("Unique Name+NIN Matches", int(unique_keys))
+
+    if conflicts_df.empty:
+        st.success(
+            "No matching Name + NIN double-dipping conflicts detected across scanned database and local data files."
+        )
+        return
+
+    filtered = _filter_by_lga_ward(conflicts_df, "radar_interceptor")
+    _render_lga_ward_charts(
+        filtered, "RADAR Double-Dipping Alerts", category_col="Conflict Type", key_prefix="radar_alerts"
+    )
+
+    st.markdown("#### Detected Name + NIN Double-Dipping Flags")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+    st.markdown("#### Queue Flagged Beneficiary for Executive Waiver Review")
+    st.session_state.setdefault("radar_waiver_queue", [])
+    existing_keys = {item.get("Key") for item in st.session_state["radar_waiver_queue"]}
+    for _, row in filtered.head(25).iterrows():
+        q_key = row["Key"]
+        already_queued = q_key in existing_keys
+        c_a, c_b, c_c = st.columns([4, 2, 2])
+        with c_a:
+            st.write(
+                f"**{row['Constituent Name']}** — NIN: `{row['NIN']}` | {row['LGA']} / {row['Ward']} ({row['Conflict Type']})"
+            )
+        with c_b:
+            st.write(f"Source: {row['Source']}")
+        with c_c:
+            btn_label = "Queued for Waiver" if already_queued else "Send to Waiver Ledger"
+            if st.button(
+                btn_label,
+                key=f"radar_queue_{abs(hash(q_key))}_{row['Record ID']}",
+                disabled=already_queued,
+                use_container_width=True,
+            ):
+                st.session_state["radar_waiver_queue"].append(row.to_dict())
+                st.success(f"Added {row['Constituent Name']} to Executive Waiver Ledger queue.")
+                st.rerun()
+
+
+def render_executive_waiver_ledger():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### 📜 Executive Waiver Ledger — Beneficiary Review & One-Click Waiver")
+    st.caption(
+        "Review previously detected/flagged beneficiaries and grant an explicit executive waiver where warranted."
+    )
+
+    st.session_state.setdefault("waived_beneficiary_keys", set())
+    st.session_state.setdefault("radar_waiver_queue", [])
+
+    waiver_subs_df = _load_submissions_dataframe(["executive_waiver"], limit=200)
+    persisted_waived_keys = set()
+    if waiver_subs_df is not None and not waiver_subs_df.empty and "waiver_key" in waiver_subs_df.columns:
+        persisted_waived_keys = {
+            str(k).strip() for k in waiver_subs_df["waiver_key"].dropna().tolist() if str(k).strip()
+        }
+
+    waived_keys = set(st.session_state["waived_beneficiary_keys"]) | persisted_waived_keys
+
+    db_df = _load_submissions_dataframe(limit=1000)
+    conflicts_df, _, _, _ = _compute_radar_conflicts(db_df if db_df is not None else pd.DataFrame())
+
+    candidates = []
+    if conflicts_df is not None and not conflicts_df.empty:
+        for _, r in conflicts_df.iterrows():
+            candidates.append(r.to_dict())
+    for item in st.session_state["radar_waiver_queue"]:
+        candidates.append(item)
+
+    if not candidates:
+        st.info(
+            "No flagged or queued double-dipping beneficiaries are currently awaiting waiver action."
+        )
+        if waiver_subs_df is not None and not waiver_subs_df.empty:
+            st.markdown("#### Recorded Executive Waivers")
+            st.dataframe(waiver_subs_df, use_container_width=True, hide_index=True)
+        return
+
+    ledger_df = pd.DataFrame(candidates).drop_duplicates(subset=["Key"], keep="first").copy()
+    ledger_df["Waiver Status"] = ledger_df["Key"].apply(
+        lambda k: "Waived" if k in waived_keys else "Pending Waiver"
+    )
+
+    filtered = _filter_by_lga_ward(ledger_df, "waiver_ledger")
+
+    w1, w2, w3 = st.columns(3)
+    with w1:
+        st.metric("Detected Beneficiaries", len(filtered))
+    with w2:
+        st.metric("Waived Constituents", int((filtered["Waiver Status"] == "Waived").sum()))
+    with w3:
+        st.metric("Pending Review", int((filtered["Waiver Status"] == "Pending Waiver").sum()))
+
+    _render_lga_ward_charts(
+        filtered, "Executive Waiver Ledger", category_col="Waiver Status", key_prefix="waiver_ledger"
+    )
+
+    st.markdown("#### Beneficiary Ledger & One-Click Waiver Controls")
+    for idx, row in filtered.iterrows():
+        key_val = row["Key"]
+        is_waived = row["Waiver Status"] == "Waived"
+        col1, col2, col3, col4 = st.columns([4, 2, 2, 2])
+        with col1:
+            st.write(f"**{row.get('Constituent Name', 'Beneficiary')}** — NIN: `{row.get('NIN', 'N/A')}`")
+        with col2:
+            st.write(f"{row.get('LGA', 'Unspecified')} / {row.get('Ward', 'Unspecified')}")
+        with col3:
+            st.write(f"Status: **{row['Waiver Status']}**")
+        with col4:
+            if is_waived:
+                st.button(
+                    "Waived",
+                    key=f"waived_done_{idx}_{abs(hash(key_val))}",
+                    disabled=True,
+                    use_container_width=True,
+                )
+            else:
+                if st.button(
+                    "Waive",
+                    key=f"waive_btn_{idx}_{abs(hash(key_val))}",
+                    use_container_width=True,
+                ):
+                    waiver_payload = {
+                        "waiver_key": key_val,
+                        "beneficiary_name": row.get("Constituent Name", ""),
+                        "nin": row.get("NIN", ""),
+                        "lga": row.get("LGA", "Unspecified"),
+                        "ward": row.get("Ward", "Unspecified"),
+                        "status": "waived",
+                    }
+                    try:
+                        submit_submission("executive_waiver", waiver_payload)
+                    except PersistenceError as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state["waived_beneficiary_keys"].add(key_val)
+                        try:
+                            list_submissions.clear()
+                        except Exception:
+                            pass
+                        st.success(f"Executive waiver granted for {row.get('Constituent Name', 'beneficiary')}.")
+                        st.rerun()
+
+
+def render_database_audit_diagnostics():
+    if not require_role("admin"):
+        return
+
+    st.markdown("### ⚖️ Database Audit & Portal Health Diagnostics")
+    st.caption(
+        "Live diagnostic monitor verifying persistence reachability, submission volume by channel, and LGA/Ward metadata completeness."
+    )
+
+    if st.button("🩺 Run Health Check Now", key="db_audit_refresh_btn"):
+        try:
+            list_submissions.clear()
+        except Exception:
+            pass
+        st.rerun()
+
+    try:
+        records = list_submissions(limit=1000)
+    except PersistenceError as exc:
+        st.error(f"Persistence Check FAILED: {exc}")
+        return
+
+    df = _load_submissions_dataframe(limit=1000) if records else pd.DataFrame()
+    total_count = len(records or [])
+    unspec_lga = int((df["LGA"] == "Unspecified").sum()) if df is not None and not df.empty else 0
+    unspec_ward = int((df["Ward"] == "Unspecified").sum()) if df is not None and not df.empty else 0
+    distinct_channels = df["Channel"].nunique() if df is not None and not df.empty else 0
+
+    h1, h2, h3, h4 = st.columns(4)
+    with h1:
+        st.metric("Persistence Status", "HEALTHY")
+    with h2:
+        st.metric("Total Persisted Records", total_count)
+    with h3:
+        st.metric("Active Channels", int(distinct_channels))
+    with h4:
+        st.metric("Missing LGA / Ward", f"{unspec_lga} / {unspec_ward}")
+
+    if df is None or df.empty:
+        st.info("Persistence backend is reachable, and there are currently 0 stored records.")
+        return
+
+    _render_lga_ward_charts(df, "Database Audit", category_col="Channel", key_prefix="db_audit")
+
+    channel_summary = (
+        df.groupby("Channel", dropna=False)
+        .agg(
+            Records=("Submission ID", "count"),
+            LGAs=("LGA", lambda s: s[s != "Unspecified"].nunique()),
+            Wards=("Ward", lambda s: s[s != "Unspecified"].nunique()),
+            Latest_Entry=("Created At", "max"),
+        )
+        .reset_index()
+        .sort_values("Records", ascending=False)
+    )
+    st.markdown("#### Channel-by-Channel Integrity Summary")
+    st.dataframe(channel_summary, use_container_width=True, hide_index=True)
+
+
+def _list_subs(submission_types=None, limit=500):
+    return getattr(persistence, "list_submissions", list_submissions)(submission_types, limit=limit)
+
+
+def _submit_sub(submission_type, payload, uploads=None, dedupe_fields=None):
+    return getattr(persistence, "submit_submission", submit_submission)(
+        submission_type, payload, uploads=uploads, dedupe_fields=dedupe_fields
+    )
+
+
+def _norm_name(val):
+    tokens = sorted(t for t in re.sub(r"[^a-z0-9\s]", " ", str(val or "").strip().lower()).split() if len(t) > 1)
+    return " ".join(tokens)
+
+
+def _norm_nin(val):
+    digits = re.sub(r"\D", "", str(val or "").strip())
+    return digits if len(digits) >= 6 else ""
+
+
+def _extract_nin(row_dict):
+    for k, v in row_dict.items():
+        kn = re.sub(r"[^a-z0-9]", "", str(k).lower())
+        if "nin" in kn or "nationalid" in kn or "bvn" in kn:
+            n = _norm_nin(v)
+            if n:
+                return n
+    return ""
+
+
+def _scan_workspace_files(max_files=30, max_rows=400):
+    rows, files, warns = [], [], []
+    skip_dirs = {".git", "backups", "__pycache__"}
+    skip_pre = (".venv", "venv")
+    exts = {".csv", ".xlsx", ".xls", ".db", ".sqlite", ".sqlite3"}
+    cands = [
+        fp for fp in sorted(Path(".").rglob("*"))
+        if fp.is_file()
+        and fp.suffix.lower() in exts
+        and not fp.name.startswith(("_inspect", "_apply", "_patch"))
+        and not any(part in skip_dirs or part.startswith(skip_pre) for part in fp.parts)
+    ]
+    for fp in cands[:max_files]:
+        try:
+            ext = fp.suffix.lower()
+            if ext == ".csv":
+                df_f = pd.read_csv(fp, nrows=max_rows, dtype=str)
+            elif ext in {".xlsx", ".xls"}:
+                df_f = pd.read_excel(fp, nrows=max_rows, dtype=str)
+            else:
+                import sqlite3
+                conn = sqlite3.connect(f"file:{fp.resolve()}?mode=ro", uri=True)
+                try:
+                    tbls = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()]
+                    part_dfs = []
+                    for t in tbls[:6]:
+                        stbl = re.sub(r"[^A-Za-z0-9_]", "", t)
+                        if stbl:
+                            td = pd.read_sql_query(f"SELECT * FROM {stbl} LIMIT {int(max_rows)}", conn)
+                            td["__tbl__"] = stbl
+                            part_dfs.append(td)
+                    df_f = pd.concat(part_dfs, ignore_index=True) if part_dfs else pd.DataFrame()
+                finally:
+                    conn.close()
+            if df_f is None or df_f.empty:
+                continue
+            files.append(str(fp))
+            for i, rec in enumerate(df_f.fillna("").to_dict(orient="records")):
+                nm = rec.get("full_name") or rec.get("name") or rec.get("applicant_name") or rec.get("beneficiary_name") or ""
+                rows.append({
+                    "Source": f"File:{fp.name}" + (f"[{rec.get('__tbl__')}]" if rec.get("__tbl__") else ""),
+                    "Record ID": f"{fp.name}#{i + 1}",
+                    "Name": str(nm).strip() or "Unnamed Entry",
+                    "Norm Name": _norm_name(nm),
+                    "NIN": _extract_nin(rec) or "Not Provided",
+                    "LGA": str(rec.get("lga") or rec.get("LGA") or "Unspecified").strip() or "Unspecified",
+                    "Ward": str(rec.get("ward") or rec.get("Ward") or "Unspecified").strip() or "Unspecified",
+                    "Channel": str(rec.get("submission_type") or "internal_file"),
+                })
+        except Exception as exc:
+            warns.append(f"{fp.name}: {exc}")
+    return rows, files, warns
+
+
+def _find_radar_conflicts(db_df):
+    items = []
+    if db_df is not None and not db_df.empty:
+        for _, r in db_df.iterrows():
+            rd = r.to_dict()
+            nm = rd.get("Name / Subject", "")
+            items.append({
+                "Source": "Portal DB",
+                "Record ID": str(rd.get("Submission ID") or ""),
+                "Name": str(nm).strip() or "Unnamed Entry",
+                "Norm Name": _norm_name(nm),
+                "NIN": _extract_nin(rd) or "Not Provided",
+                "LGA": str(rd.get("LGA") or "Unspecified").strip() or "Unspecified",
+                "Ward": str(rd.get("Ward") or "Unspecified").strip() or "Unspecified",
+                "Channel": str(rd.get("Channel") or "submission"),
+            })
+    f_rows, f_list, f_warns = _scan_workspace_files()
+    items.extend(f_rows)
+    all_df = pd.DataFrame(items) if items else pd.DataFrame()
+    if all_df.empty:
+        return pd.DataFrame(), all_df, f_list, f_warns
+
+    flags = []
+    valid = all_df[(all_df["Norm Name"] != "") & (all_df["NIN"] != "Not Provided")]
+    if not valid.empty:
+        for (nn, nin), grp in valid.groupby(["Norm Name", "NIN"]):
+            if len(grp) > 1:
+                lgas = sorted({x for x in grp["LGA"] if x and x != "Unspecified"})
+                wards = sorted({x for x in grp["Ward"] if x and x != "Unspecified"})
+                switched = len(lgas) > 1 or len(wards) > 1
+                ctype = "Cross-LGA / Cross-Ward Double Dip" if len(lgas) > 1 else ("Cross-Ward Double Dip" if len(wards) > 1 else "Repeat Same Name + NIN")
+                for _, it in grp.iterrows():
+                    flags.append({
+                        "Constituent Name": it["Name"],
+                        "NIN": nin,
+                        "LGA": it["LGA"],
+                        "Ward": it["Ward"],
+                        "Conflict Type": ctype,
+                        "Ward/LGA Switch Detected": "YES" if switched else "NO",
+                        "Occurrences": int(len(grp)),
+                        "Source": it["Source"],
+                        "Channel": it["Channel"],
+                        "Record ID": it["Record ID"],
+                        "Key": f"{nn}|{nin}",
+                    })
+    return pd.DataFrame(flags), all_df, f_list, f_warns
+
+
+def render_radar_deduplication_interceptor():
+    if not require_role("admin"):
+        return
+    st.markdown("### 🛡️ RADAR Deduplication Interceptor — Equity & Double-Dipping Guard")
+    st.caption("Detects matching Name + NIN entries switching wards or LGAs across database records and local data files.")
+    if st.button("🔄 Scan Database & Files Now", key="radar_scan_btn"):
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass
+        st.rerun()
+    db_df = _load_submissions_dataframe(limit=1000)
+    if db_df is None:
+        return
+    conflicts, all_df, files, warns = _find_radar_conflicts(db_df)
+    if files:
+        st.caption(f"Scanned files: {', '.join(files)}")
+    for w in warns:
+        st.warning(f"Scan note: {w}")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Records Scanned", len(all_df))
+    with c2:
+        st.metric("Flagged Double-Dip Entries", len(conflicts))
+    with c3:
+        st.metric("Ward/LGA Switch Alerts", int((conflicts["Ward/LGA Switch Detected"] == "YES").sum()) if not conflicts.empty else 0)
+    if conflicts.empty:
+        st.success("No matching Name + NIN double-dipping conflicts detected.")
+        return
+    filtered = _filter_by_lga_ward(conflicts, "radar_hub")
+    _render_lga_ward_charts(filtered, "RADAR Conflicts", category_col="Conflict Type", key_prefix="radar_ch")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+    st.session_state.setdefault("radar_waiver_queue", [])
+    queued_keys = {x.get("Key") for x in st.session_state["radar_waiver_queue"]}
+    for _, r in filtered.head(20).iterrows():
+        qk = r["Key"]
+        already = qk in queued_keys
+        a, b = st.columns([5, 2])
+        with a:
+            st.write(f"**{r['Constituent Name']}** — NIN `{r['NIN']}` | {r['LGA']} / {r['Ward']} ({r['Conflict Type']})")
+        with b:
+            if st.button("Queued" if already else "Send to Waiver Ledger", key=f"rq_{abs(hash(qk))}_{r['Record ID']}", disabled=already, use_container_width=True):
+                st.session_state["radar_waiver_queue"].append(r.to_dict())
+                st.rerun()
+
+
+def render_executive_waiver_ledger():
+    if not require_role("admin"):
+        return
+    st.markdown("### 📜 Executive Waiver Ledger — Beneficiary Review & One-Click Waiver")
+    st.session_state.setdefault("waived_beneficiary_keys", set())
+    st.session_state.setdefault("radar_waiver_queue", [])
+    w_subs = _load_submissions_dataframe(["executive_waiver"], limit=200)
+    db_waived = set(str(k).strip() for k in w_subs["waiver_key"].dropna().tolist()) if w_subs is not None and not w_subs.empty and "waiver_key" in w_subs.columns else set()
+    waived = set(st.session_state["waived_beneficiary_keys"]) | db_waived
+    db_df = _load_submissions_dataframe(limit=1000)
+    conflicts, _, _, _ = _find_radar_conflicts(db_df if db_df is not None else pd.DataFrame())
+    pool = ([r.to_dict() for _, r in conflicts.iterrows()] if conflicts is not None and not conflicts.empty else []) + list(st.session_state["radar_waiver_queue"])
+    if not pool:
+        st.info("No flagged or queued beneficiaries awaiting waiver review.")
+        return
+    ldf = pd.DataFrame(pool).drop_duplicates(subset=["Key"], keep="first").copy()
+    ldf["Waiver Status"] = ldf["Key"].apply(lambda k: "Waived" if k in waived else "Pending Waiver")
+    filtered = _filter_by_lga_ward(ldf, "waiver_hub")
+    _render_lga_ward_charts(filtered, "Waiver Ledger", category_col="Waiver Status", key_prefix="waiver_ch")
+    for idx, r in filtered.iterrows():
+        kv = r["Key"]
+        done = r["Waiver Status"] == "Waived"
+        c1, c2, c3 = st.columns([5, 2, 2])
+        with c1:
+            st.write(f"**{r.get('Constituent Name', 'Beneficiary')}** — NIN `{r.get('NIN', 'N/A')}` | {r.get('LGA', 'Unspecified')} / {r.get('Ward', 'Unspecified')}")
+        with c2:
+            st.write(f"Status: **{r['Waiver Status']}**")
+        with c3:
+            if st.button("Waived" if done else "Waive", key=f"wv_{idx}_{abs(hash(kv))}", disabled=done, use_container_width=True):
+                try:
+                    _submit_sub("executive_waiver", {"waiver_key": kv, "beneficiary_name": r.get("Constituent Name", ""), "nin": r.get("NIN", ""), "lga": r.get("LGA", "Unspecified"), "ward": r.get("Ward", "Unspecified"), "status": "waived"})
+                except PersistenceError as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state["waived_beneficiary_keys"].add(kv)
+                    st.rerun()
+
+
+def render_database_audit_diagnostics():
+    if not require_role("admin"):
+        return
+    st.markdown("### ⚖️ Database Audit & Portal Health Diagnostics")
+    if st.button("🩺 Run Health Check Now", key="audit_refresh_btn"):
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass
+        st.rerun()
+    try:
+        recs = _list_subs(limit=1000)
+    except PersistenceError as exc:
+        st.error(f"Persistence Check FAILED: {exc}")
+        return
+    df = _load_submissions_dataframe(limit=1000) if recs else pd.DataFrame()
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Persistence Status", "HEALTHY")
+    with c2:
+        st.metric("Total Persisted Records", len(recs or []))
+    with c3:
+        st.metric("Active Channels", int(df["Channel"].nunique()) if df is not None and not df.empty else 0)
+    if df is None or df.empty:
+        st.info("Persistence backend is reachable; no records stored yet.")
+        return
+    _render_lga_ward_charts(df, "Database Audit", category_col="Channel", key_prefix="audit_ch")
+    st.dataframe(df.groupby("Channel", dropna=False).size().reset_index(name="Records"), use_container_width=True, hide_index=True)
+
+
+def render_admin_legislative_tracker():
+    if not require_role("admin"):
+        return
+    st.markdown("### 🚀 Legislative Progress Tracker — Admin Mirror View")
+    render_progress_tracker()
+
+
+def render_strategic_committee_progress_hub():
+    if not require_role("admin"):
+        return
+    st.markdown("### 📋 Strategic Committee Progress Intake (M14)")
+    df = _load_submissions_dataframe(["committee_compliance", "committee_progress", "committee_member"], limit=500)
+    if df is not None and not df.empty:
+        filtered = _filter_by_lga_ward(df, "comm_m14_hub")
+        _render_lga_ward_charts(filtered, "Committee Progress", category_col="Channel", key_prefix="comm_m14_ch")
+        st.dataframe(filtered, use_container_width=True, hide_index=True)
+    render_committee_compliance_form()
+
+
+def render_vantedge_influencer_proportions():
+    if not require_role("admin"):
+        return
+    st.markdown("### 💎 Vantedge Influencer Proportions")
+    df = _load_submissions_dataframe(limit=1000)
+    if df is None or df.empty:
+        st.info("No mobilization or influencer records available yet.")
+        return
+    filtered = _filter_by_lga_ward(df, "vantedge_hub")
+    _render_lga_ward_charts(filtered, "Vantedge Proportions", category_col="Channel", key_prefix="vantedge_ch")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+
+def render_long_term_momentum_hub():
+    if not require_role("admin"):
+        return
+    st.markdown("### 📅 Long-Term Momentum Monitoring")
+    df = _load_submissions_dataframe(limit=1000)
+    if df is None or df.empty:
+        st.info("No records available yet to monitor momentum.")
+        return
+    filtered = _filter_by_lga_ward(df, "momentum_hub")
+    _render_lga_ward_charts(filtered, "Long-Term Momentum", category_col="Channel", key_prefix="momentum_ch")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+
+def render_bulk_data_sync_hub():
+    if not require_role("admin"):
+        return
+    st.markdown("### 📂 Bulk Data Sync Stream — CSV / Excel Batch Import")
+    up = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx", "xls"], key="bulk_sync_up")
+    ch = st.selectbox("Target Channel", ["palliative_direct", "scholarship_application", "skill_application", "cv_application"], key="bulk_sync_ch")
+    if up is not None:
+        bdf = pd.read_csv(up, dtype=str).fillna("") if up.name.lower().endswith(".csv") else pd.read_excel(up, dtype=str).fillna("")
+        st.dataframe(bdf.head(30), use_container_width=True, hide_index=True)
+        if st.button("📥 Import Batch Rows", key="bulk_sync_btn", use_container_width=True):
+            ok = 0
+            for _, r in bdf.iterrows():
+                try:
+                    _submit_sub(ch, {str(k): str(v).strip() for k, v in r.to_dict().items()})
+                    ok += 1
+                except PersistenceError as exc:
+                    st.error(str(exc))
+                    break
+            if ok:
+                st.success(f"Imported {ok} row(s) into {ch}.")
+                st.rerun()

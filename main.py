@@ -6,6 +6,7 @@
 
 import sys
 import os
+import re
 import hmac
 import io
 import asyncio
@@ -436,7 +437,7 @@ else:
 
     st.markdown("<hr class='nav-divider'>", unsafe_allow_html=True)
 
-    exec_target = selected_route
+    exec_target = re.sub(r"^[^\w]+", "", str(selected_route or "")).strip()
 
     # --- Public Channel Execution Interface ---
     if selected_route == "🚀 LEGISLATIVE PROGRESS TRACKER":
@@ -610,29 +611,7 @@ else:
 
     # --- 📢 MODULE 3: ADMIN ANNOUNCEMENT CONTROL ---
     elif exec_target == "Admin Announcement Control":
-        st.markdown("### 📢 Executive Announcement Broadcasting Terminal")
-        st.info(
-            f"**Currently Active Marquee Line:** {st.session_state.global_scrolling_announcement}"
-        )
-        new_broadcast_msg = st.text_area(
-            label="Type announcement text content:",
-            value=st.session_state.global_scrolling_announcement,
-            key="marquee_broadcast_input_field",
-        )
-        if st.button("🚀 Push Live to Portal Ticker", width="stretch"):
-            if new_broadcast_msg.strip():
-                try:
-                    submit_submission(
-                        "announcement", {"message": new_broadcast_msg.strip()}
-                    )
-                except PersistenceError as exc:
-                    st.error(str(exc))
-                else:
-                    st.session_state.global_scrolling_announcement = (
-                        new_broadcast_msg.strip()
-                    )
-                    st.success("The announcement was saved and published.")
-                    st.rerun()
+        panels.render_admin_announcement_control()
 
     elif "Live Election Analytical Sync" in str(exec_target):
         panels.render_election_analytical_sync()
@@ -642,36 +621,30 @@ else:
         panels.render_admin_submissions(["ward_collation", "polling_unit_tally"])
 
     # --- 📋 MODULE 14: STRATEGIC COMMITTEE PROGRESS INTAKE ---
-    elif exec_target == "Strategic Committee Progress Intake (M14)":
-        panels.render_committee_compliance_form()
 
     # --- 📐 SOLID STATE ROUTE MAPPINGS FOR INDIVIDUAL ADMIN TILES ---
     elif exec_target == "Master Registry Matrix":
-        panels.render_admin_submissions(
-            [
-                "palliative_direct",
-                "palliative_vouching",
-                "skill_application",
-                "scholarship_application",
-                "cv_application",
-                "committee_member",
-            ]
-        )
+        panels.render_master_registry_matrix()
     elif exec_target == "Citizen Feedback":
-        panels.render_admin_submissions(["speak_direct", "community_urgent_need"])
+        panels.render_citizen_feedback_hub()
     elif exec_target == "Database Audit Diagnostics":
-        panels.render_admin_submissions()
+        panels.render_database_audit_diagnostics()
     elif exec_target == "RADAR Deduplication Interceptor":
-        st.info(
-            "The database enforces duplicate prevention per submission type and normalized identity. "
-            "No separate duplicate-review queue is implemented yet."
-        )
+        panels.render_radar_deduplication_interceptor()
+    elif exec_target == "Executive Waiver Ledger":
+        panels.render_executive_waiver_ledger()
     elif exec_target == "Scholar Talent Matrix":
-        panels.render_admin_submissions(
-            ["skill_application", "scholarship_application", "cv_application"]
-        )
+        panels.render_scholar_talent_matrix()
     elif exec_target == "Legislative Progress Tracker":
-        panels.render_progress_tracker()
+        panels.render_admin_legislative_tracker()
+    elif exec_target == "Strategic Committee Progress Intake (M14)":
+        panels.render_strategic_committee_progress_hub()
+    elif exec_target == "Vantedge Influencer Proportions":
+        panels.render_vantedge_influencer_proportions()
+    elif exec_target == "Long-Term Momentum Monitoring":
+        panels.render_long_term_momentum_hub()
+    elif exec_target == "Bulk Data Sync Stream":
+        panels.render_bulk_data_sync_hub()
     else:
         st.warning(
             f"{exec_target} is not implemented yet; no live data is available in this module."
