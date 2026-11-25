@@ -1930,9 +1930,64 @@ def _render_saved_submissions(submission_types):
             st.info("ℹ️ Excel export requires openpyxl package")
 
 
+
+def _trigger_election_refresh(source: str = "election_updates") -> None:
+    """Invalidate cached data, bump refresh state, and rerun to load fresh election updates."""
+    st.cache_data.clear()
+    st.session_state["election_refresh_tick"] = int(st.session_state.get("election_refresh_tick", 0)) + 1
+    st.session_state["election_last_refresh_source"] = source
+    st.session_state["election_last_refresh_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.rerun()
+
+
+def _render_election_update_bar(scope_key: str, tabs: list[str] | None = None) -> str | None:
+    """Render a click-to-refresh control, sync status, and tab/view selector that refreshes on switch."""
+    col_btn, col_status = st.columns([1.4, 3.6])
+    with col_btn:
+        if st.button("🔄 Refresh Election Updates", key=f"refresh_election_btn_{scope_key}", width="stretch"):
+            _trigger_election_refresh(f"{scope_key}:button")
+    with col_status:
+        last_at = st.session_state.get("election_last_refresh_at", "Initial load")
+        tick = int(st.session_state.get("election_refresh_tick", 0))
+        st.caption(f"Last updated: `{last_at}` · Refresh count: `{tick}`")
+
+    if not tabs:
+        return None
+
+    tab_state_key = f"election_active_tab_{scope_key}"
+    prev_tab_key = f"_election_prev_tab_{scope_key}"
+    current_tab = st.session_state.get(tab_state_key, tabs[0])
+    if current_tab not in tabs:
+        current_tab = tabs[0]
+
+    selected_tab = st.radio(
+        "Election View Tabs",
+        options=tabs,
+        index=tabs.index(current_tab),
+        horizontal=True,
+        key=tab_state_key,
+    )
+    previous_tab = st.session_state.get(prev_tab_key)
+    st.session_state[prev_tab_key] = selected_tab
+    if previous_tab is not None and previous_tab != selected_tab:
+        _trigger_election_refresh(f"{scope_key}:tab:{selected_tab}")
+
+    return selected_tab
+
+
 def render_admin_submissions(submission_types=None):
-    if require_role("admin"):
-        _render_saved_submissions(submission_types)
+    if not require_role("admin"):
+        return
+    active_tab = _render_election_update_bar(
+        "ec8a_admin_submissions",
+        tabs=["All Ground Truth Records", "Polling Unit Tally", "Ward Collation (EC8A)"],
+    )
+    scoped_types = submission_types
+    if active_tab == "Polling Unit Tally":
+        scoped_types = ["polling_unit_tally"]
+    elif active_tab == "Ward Collation (EC8A)":
+        scoped_types = ["ward_collation"]
+    _render_saved_submissions(scoped_types)
 
 
 def strategic_committees_panel():
@@ -2216,6 +2271,10 @@ def render_election_analytical_sync():
         return
 
     st.markdown("### \U0001F4CA LIVE ELECTION ANALYTICAL SYNC DISPLAY")
+    active_sync_tab = _render_election_update_bar(
+        "live_election_sync",
+        tabs=["Combined Live Sync", "Polling Unit Tally", "Ward Collation (EC8A)"],
+    )
     try:
         records = list_submissions(["polling_unit_tally", "ward_collation"])
     except PersistenceError as exc:
@@ -2226,6 +2285,17 @@ def render_election_analytical_sync():
         return
     if not records:
         st.info("No polling-unit or ward collation tallies have been recorded yet.")
+        return
+
+    if active_sync_tab == "Polling Unit Tally":
+        records = [r for r in records if r.get("submission_type", "polling_unit_tally") == "polling_unit_tally"]
+    elif active_sync_tab == "Ward Collation (EC8A)":
+        records = [
+            r for r in records
+            if r.get("submission_type") == "ward_collation" or "APC_Votes" in (r.get("payload") or {})
+        ]
+    if not records:
+        st.info(f"No records match '{active_sync_tab}' after the latest refresh.")
         return
 
     rows = []
